@@ -1,36 +1,32 @@
 import type { ReqHandler } from '../../types';
-import { IBuySellDto } from './game.controller.dto';
-import { BadRequest } from '../../errors/index';
+import { ITradeDto } from './game.controller.dto';
+import { BadRequest, UnprocessableEntity } from '../../errors/index';
 import { StatusCodes } from 'http-status-codes';
 import { buyStock, sellStock } from '../../game/game.handlers';
 import { getGameState } from '../../game/game';
 
-type BuySellHandler = ReqHandler<IBuySellDto>;
+type TradeHandler = ReqHandler<ITradeDto>;
 
-export const buyStockHandler: BuySellHandler = async function (req, res) {
-  const { stock: stockId, amount: quantity } = req.body;
-  if (!stockId || !quantity) {
-    throw new BadRequest('StockId or Quantity not Provided');
+export const executeTradeHandler: TradeHandler = async function (req, res) {
+  const { action, symbol, quantity } = req.body;
+  if (!symbol || !quantity) {
+    throw new BadRequest('Symbol or Quantity not Provided');
   }
   if (quantity <= 0) {
     throw new BadRequest('Quantity must be a positive number');
   }
-  await buyStock(req.player.playerId, stockId, quantity, getGameState());
-  res.status(StatusCodes.OK).json({
-    status: 'Success',
-  });
-};
 
-export const sellStockHandler: BuySellHandler = async function (req, res) {
-  const { stock: stockId, amount: quantity } = req.body;
-  if (!stockId || !quantity) {
-    throw new BadRequest('StockId or Quantity not Provided');
+  let result;
+  if (action === 'BUY') {
+    result = await buyStock(req.player.playerId, symbol, quantity, getGameState());
+  } else if (action === 'SELL') {
+    result = await sellStock(req.player.playerId, symbol, quantity, getGameState());
+  } else {
+    throw new UnprocessableEntity('Invalid action type');
   }
-  if (quantity <= 0) {
-    throw new BadRequest('Quantity must be a positive number');
-  }
-  await sellStock(req.player.playerId, stockId, quantity, getGameState());
+
   res.status(StatusCodes.OK).json({
     status: 'Success',
+    data: result,
   });
 };

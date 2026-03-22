@@ -35,9 +35,9 @@ export function LoginForm() {
       const sessionRes = await fetch('/api/auth/session');
       const session = await sessionRes.json();
       if (session?.user) {
-        // user.id contains the backend JWT
-        login({ id: session.user.id, email: session.user.email, name: session.user.name, memberSince: new Date().toISOString() });
-        router.push('/home');
+        const isAdmin = session.user.isAdmin;
+        login({ id: session.user.id, email: session.user.email, name: session.user.name, memberSince: new Date().toISOString(), isAdmin });
+        router.push(isAdmin ? '/admin-dashboard' : '/home');
       }
     }
   };

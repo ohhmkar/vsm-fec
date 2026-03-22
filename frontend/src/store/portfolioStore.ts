@@ -42,17 +42,12 @@ export const usePortfolioStore = create<PortfolioStore>()(
           const token = useAuthStore.getState().user?.id;
           if (!token) return;
 
-          const [balRes, portRes] = await Promise.all([
-            fetch(`${BACKEND_URL}/game/info/balance`, { headers: { Authorization: `Bearer ${token}` } }),
-            fetch(`${BACKEND_URL}/game/info/portfolio`, { headers: { Authorization: `Bearer ${token}` } })
-          ]);
+          const res = await fetch(`${BACKEND_URL}/game/info/portfolio`, { headers: { Authorization: `Bearer ${token}` } });
+          const data = await res.json();
 
-          const balData = await balRes.json();
-          const portData = await portRes.json();
-
-          if (balData.status === 'Success' && portData.status === 'Success') {
-            const cash = balData.data.balance;
-            const backendHoldings: any[] = portData.data.portfolio;
+          if (data.status === 'Success') {
+            const cash = data.data.bankBalance;
+            const backendHoldings: any[] = data.data.portfolio;
             
             // Map backend simple portfolio ({ name, volume, value, avgCost }) to our rich structure
             const currentHoldings = get().holdings;
@@ -81,7 +76,7 @@ export const usePortfolioStore = create<PortfolioStore>()(
         const token = useAuthStore.getState().user?.id;
         if (!token) return { success: false, message: 'Not authenticated' };
 
-        const endpoint = type === 'BUY' ? '/game/buy-stock' : '/game/sell-stock';
+        const endpoint = '/game/portfolio/trades';
         
         try {
           const res = await fetch(`${BACKEND_URL}${endpoint}`, {
@@ -90,7 +85,7 @@ export const usePortfolioStore = create<PortfolioStore>()(
               'Content-Type': 'application/json',
               Authorization: `Bearer ${token}` 
             },
-            body: JSON.stringify({ stock: ticker, amount: shares })
+            body: JSON.stringify({ action: type, symbol: ticker, quantity: shares })
           });
 
           const data = await res.json();

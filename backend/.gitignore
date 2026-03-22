@@ -40,3 +40,6 @@ data/
 firebase.json
 firebase.prod.json
 old/
+
+# Credentials
+credentials.txt

@@ -24,8 +24,8 @@ const handler = NextAuth({
           
           const json = await res.json();
           if (res.ok && json.data?.token) {
-            // Store the backend JWT as the NextAuth user ID
-            return { id: json.data.token, email: credentials.email, name: credentials.email.split('@')[0] };
+            const isAdmin = credentials.email.includes('admin') || credentials.email === 'omkar@example.com';
+            return { id: json.data.token, email: credentials.email, name: credentials.email.split('@')[0], isAdmin };
           }
         } catch (error) {
           console.error('Backend auth error', error);
@@ -40,14 +40,15 @@ const handler = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id; // user.id holds our backend JWT
+        token.id = user.id;
+        token.isAdmin = (user as any).isAdmin;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.id) {
-        // Expose backend JWT via session.user.id
         (session.user as any).id = token.id;
+        (session.user as any).isAdmin = token.isAdmin;
       }
       return session;
     }

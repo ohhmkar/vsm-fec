@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Shield } from 'lucide-react';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { generateAllStocks } from '@/lib/stockEngine';
 
@@ -136,8 +137,15 @@ export default function LoginPage() {
       </div>
 
       {/* Right Panel — Login Form */}
-      <div className="w-full lg:w-[40%] flex items-center justify-center p-8 bg-[var(--bg-base)]">
+      <div className="w-full lg:w-[40%] flex flex-col items-center justify-center p-8 bg-[var(--bg-base)]">
         <LoginForm />
+        <a
+          href="/login/admin"
+          className="mt-6 text-sm text-[var(--accent-red)] hover:underline flex items-center gap-2"
+        >
+          <Shield size={14} />
+          Admin Login
+        </a>
       </div>
     </div>
   );

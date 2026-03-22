@@ -3,6 +3,7 @@ import type {
   IAddNewsRequestDto,
   IAddStockRequestDto,
   IAddStockUpdateDataDto,
+  INotifyRequestDto,
 } from './admin.controller.dto';
 import { StatusCodes } from 'http-status-codes';
 import {
@@ -15,9 +16,8 @@ import {
 } from '../../game/helpers/chore';
 import { startGame, startRound, terminateGame } from '../../game/game';
 import { gameService } from '../../services/game.logic';
-import { db } from '../../services/index';
-import { users, playerAccount, playerPortfolio } from '../../models/index';
-import { eq } from 'drizzle-orm';
+import { broadcastNotification } from '../../services/socket.service';
+import { prisma } from '../../services/prisma.service';
 
 type AddNewsHandler = ReqHandler<IAddNewsRequestDto>;
 
@@ -31,7 +31,6 @@ type AddStocksHandler = ReqHandler<IAddStockRequestDto>;
 
 export const addStock: AddStocksHandler = async function (req, res) {
   const stockData = req.body;
-  // Also sync with Prisma if possible or just use Drizzle helper for now
   await uploadStock(stockData);
   res.status(StatusCodes.OK).json({ status: 'Success' });
 };
@@ -49,7 +48,10 @@ export const addStockUpdateData: AddStockUpdateDataHandler = async function (
 
 type ControlEndpointHandler = ReqHandler<object>;
 
-export const startGameHandler: ControlEndpointHandler = async function (req, res) {
+export const startGameHandler: ControlEndpointHandler = async function (
+  req,
+  res,
+) {
   await gameService.initializeGame();
   setTimeout(startGame, 0);
   res.status(StatusCodes.OK).json({
@@ -57,7 +59,10 @@ export const startGameHandler: ControlEndpointHandler = async function (req, res
   });
 };
 
-export const startRoundHandler: ControlEndpointHandler = async function (req, res) {
+export const startRoundHandler: ControlEndpointHandler = async function (
+  req,
+  res,
+) {
   await gameService.startRound();
   setTimeout(startRound, 0);
   res.status(StatusCodes.OK).json({
@@ -69,7 +74,7 @@ export const terminateGameHandler: ControlEndpointHandler = async function (
   req,
   res,
 ) {
-  await gameService.endRound(); // Ensure DB state is closed
+  await gameService.endRound(); // Ensure DB state is closed or handled
   setTimeout(terminateGame, 0);
   res.status(StatusCodes.OK).json({
     status: 'Success',
@@ -135,21 +140,47 @@ export const getAdminPlayersHandler: ControlEndpointHandler = async function (
   req,
   res,
 ) {
-  const result = await db
-    .select({
-      id: users.id,
-      name: users.u1Name,
-      email: users.email,
-      bankBalance: playerPortfolio.bankBalance,
-      totalPortfolioValue: playerPortfolio.totalPortfolioValue,
-      stocks: playerPortfolio.stocks,
-    })
-    .from(users)
-    .innerJoin(playerAccount, eq(users.id, playerAccount.userId))
-    .innerJoin(playerPortfolio, eq(playerAccount.id, playerPortfolio.playerId));
+  const users = await prisma.user.findMany({
+    include: {
+      account: {
+        include: {
+          portfolio: true,
+        },
+      },
+    },
+    where: {
+      account: {
+        isNot: null,
+      },
+    },
+  });
+
+  const result = users
+    .filter((u) => u.account && u.account.portfolio)
+    .map((u) => ({
+      id: u.id,
+      name: u.u1Name,
+      email: u.email,
+      bankBalance: u.account!.portfolio!.bankBalance,
+      totalPortfolioValue: u.account!.portfolio!.totalPortfolioValue,
+      stocks: u.account!.portfolio!.stocks,
+    }));
 
   res.status(StatusCodes.OK).json({
     status: 'Success',
-    data: result,
+    data: result, // Original wrapped in data: result? No, `data: result`. Yes.
+  });
+};
+
+type NotifyEndpointHandler = ReqHandler<INotifyRequestDto>;
+
+export const sendNotificationHandler: NotifyEndpointHandler = async function (
+  req,
+  res,
+) {
+  const { message, type } = req.body;
+  broadcastNotification(message, type || 'info');
+  res.status(StatusCodes.OK).json({
+    status: 'Success',
   });
 };

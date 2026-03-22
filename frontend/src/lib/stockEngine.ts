@@ -35,21 +35,21 @@ interface StockSeed {
 }
 
 const STOCK_SEEDS: StockSeed[] = [
-  { ticker: 'NVXA', name: 'NovaTech AI Systems', sector: 'Technology', basePrice: 287.50, volatility: 0.028, drift: 0.0008, marketCapMultiplier: 1.8e9, avgVolume: 12500000, peRatio: 42.3 },
-  { ticker: 'GRNX', name: 'GreenWave Energy Corp', sector: 'Energy', basePrice: 64.20, volatility: 0.022, drift: 0.0003, marketCapMultiplier: 850e6, avgVolume: 5800000, peRatio: 18.7 },
-  { ticker: 'MDRX', name: 'MedCore Pharmaceuticals', sector: 'Healthcare', basePrice: 156.80, volatility: 0.024, drift: 0.0005, marketCapMultiplier: 1.2e9, avgVolume: 7200000, peRatio: 28.4 },
-  { ticker: 'FNTX', name: 'Fintera Banking Group', sector: 'Finance', basePrice: 89.40, volatility: 0.018, drift: 0.0002, marketCapMultiplier: 2.1e9, avgVolume: 9400000, peRatio: 14.2 },
-  { ticker: 'AERO', name: 'Apex Aerospace Inc', sector: 'Industrials', basePrice: 198.60, volatility: 0.02, drift: 0.0004, marketCapMultiplier: 1.5e9, avgVolume: 4300000, peRatio: 22.8 },
-  { ticker: 'LUXE', name: 'Luminary Retail Holdings', sector: 'Consumer Discretionary', basePrice: 42.30, volatility: 0.025, drift: -0.0001, marketCapMultiplier: 600e6, avgVolume: 6100000, peRatio: 16.5 },
-  { ticker: 'OMKX', name: 'Omkar Crypto Exchange', sector: 'Finance', basePrice: 124.70, volatility: 0.035, drift: 0.0006, marketCapMultiplier: 950e6, avgVolume: 15800000, peRatio: 35.1 },
-  { ticker: 'AGRI', name: 'AgriVault Commodities', sector: 'Materials', basePrice: 37.90, volatility: 0.019, drift: 0.0001, marketCapMultiplier: 420e6, avgVolume: 3200000, peRatio: 12.8 },
-  { ticker: 'STRM', name: 'StreamVault Media', sector: 'Communication', basePrice: 78.50, volatility: 0.023, drift: 0.0003, marketCapMultiplier: 1.1e9, avgVolume: 8700000, peRatio: 25.6 },
-  { ticker: 'CYBX', name: 'CyberShield Security', sector: 'Technology', basePrice: 215.30, volatility: 0.026, drift: 0.0007, marketCapMultiplier: 1.4e9, avgVolume: 6500000, peRatio: 38.9 },
-  { ticker: 'RLTY', name: 'RealNest Property Trust', sector: 'Real Estate', basePrice: 52.10, volatility: 0.015, drift: 0.0001, marketCapMultiplier: 780e6, avgVolume: 4100000, peRatio: 11.3 },
-  { ticker: 'MOTO', name: 'MotorFlex Automotive', sector: 'Consumer Discretionary', basePrice: 147.20, volatility: 0.021, drift: -0.0002, marketCapMultiplier: 1.3e9, avgVolume: 7800000, peRatio: 19.4 },
-  { ticker: 'BRIX', name: 'BioRix Life Sciences', sector: 'Healthcare', basePrice: 93.60, volatility: 0.03, drift: 0.0004, marketCapMultiplier: 680e6, avgVolume: 5400000, peRatio: 31.7 },
-  { ticker: 'GLBL', name: 'GlobalRoute Logistics', sector: 'Industrials', basePrice: 68.80, volatility: 0.017, drift: 0.0002, marketCapMultiplier: 920e6, avgVolume: 6800000, peRatio: 15.9 },
-  { ticker: 'QUNT', name: 'Quantum Data Infrastructure', sector: 'Technology', basePrice: 312.40, volatility: 0.032, drift: 0.0009, marketCapMultiplier: 2.4e9, avgVolume: 11200000, peRatio: 48.2 },
+  { ticker: 'NVXA', name: 'NovaTech AI Systems', sector: 'Technology', basePrice: 100.00, volatility: 0.028, drift: 0.0008, marketCapMultiplier: 1.8e9, avgVolume: 12500000, peRatio: 42.3 },
+  { ticker: 'GRNX', name: 'GreenWave Energy Corp', sector: 'Energy', basePrice: 100.00, volatility: 0.022, drift: 0.0003, marketCapMultiplier: 850e6, avgVolume: 5800000, peRatio: 18.7 },
+  { ticker: 'MDRX', name: 'MedCore Pharmaceuticals', sector: 'Healthcare', basePrice: 100.00, volatility: 0.024, drift: 0.0005, marketCapMultiplier: 1.2e9, avgVolume: 7200000, peRatio: 28.4 },
+  { ticker: 'FNTX', name: 'Fintera Banking Group', sector: 'Finance', basePrice: 100.00, volatility: 0.018, drift: 0.0002, marketCapMultiplier: 2.1e9, avgVolume: 9400000, peRatio: 14.2 },
+  { ticker: 'AERO', name: 'Apex Aerospace Inc', sector: 'Industrials', basePrice: 100.00, volatility: 0.02, drift: 0.0004, marketCapMultiplier: 1.5e9, avgVolume: 4300000, peRatio: 22.8 },
+  { ticker: 'LUXE', name: 'Luminary Retail Holdings', sector: 'Consumer Discretionary', basePrice: 100.00, volatility: 0.025, drift: -0.0001, marketCapMultiplier: 600e6, avgVolume: 6100000, peRatio: 16.5 },
+  { ticker: 'OMKX', name: 'Omkar Crypto Exchange', sector: 'Finance', basePrice: 100.00, volatility: 0.035, drift: 0.0006, marketCapMultiplier: 950e6, avgVolume: 15800000, peRatio: 35.1 },
+  { ticker: 'AGRI', name: 'AgriVault Commodities', sector: 'Materials', basePrice: 100.00, volatility: 0.019, drift: 0.0001, marketCapMultiplier: 420e6, avgVolume: 3200000, peRatio: 12.8 },
+  { ticker: 'STRM', name: 'StreamVault Media', sector: 'Communication', basePrice: 100.00, volatility: 0.023, drift: 0.0003, marketCapMultiplier: 1.1e9, avgVolume: 8700000, peRatio: 25.6 },
+  { ticker: 'CYBX', name: 'CyberShield Security', sector: 'Technology', basePrice: 100.00, volatility: 0.026, drift: 0.0007, marketCapMultiplier: 1.4e9, avgVolume: 6500000, peRatio: 38.9 },
+  { ticker: 'RLTY', name: 'RealNest Property Trust', sector: 'Real Estate', basePrice: 100.00, volatility: 0.015, drift: 0.0001, marketCapMultiplier: 780e6, avgVolume: 4100000, peRatio: 11.3 },
+  { ticker: 'MOTO', name: 'MotorFlex Automotive', sector: 'Consumer Discretionary', basePrice: 100.00, volatility: 0.021, drift: -0.0002, marketCapMultiplier: 1.3e9, avgVolume: 7800000, peRatio: 19.4 },
+  { ticker: 'BRIX', name: 'BioRix Life Sciences', sector: 'Healthcare', basePrice: 100.00, volatility: 0.03, drift: 0.0004, marketCapMultiplier: 680e6, avgVolume: 5400000, peRatio: 31.7 },
+  { ticker: 'GLBL', name: 'GlobalRoute Logistics', sector: 'Industrials', basePrice: 100.00, volatility: 0.017, drift: 0.0002, marketCapMultiplier: 920e6, avgVolume: 6800000, peRatio: 15.9 },
+  { ticker: 'QUNT', name: 'Quantum Data Infrastructure', sector: 'Technology', basePrice: 100.00, volatility: 0.032, drift: 0.0009, marketCapMultiplier: 2.4e9, avgVolume: 11200000, peRatio: 48.2 },
 ];
 
 function generateIntradayOHLCV(seed: StockSeed, minutes: number): OHLCV[] {

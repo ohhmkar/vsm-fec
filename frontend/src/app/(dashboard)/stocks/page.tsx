@@ -11,7 +11,6 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  TrendingUp,
   Filter,
   X,
 } from "lucide-react";
@@ -25,9 +24,7 @@ import {
 import {
   formatCurrency,
   formatCompactCurrency,
-  formatVolume,
 } from "@/lib/utils";
-import { AreaChart, Area, ResponsiveContainer, YAxis } from "recharts";
 import { clsx } from "clsx";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { MiniSparkline } from "@/components/charts/MiniSparkline";
@@ -72,7 +69,7 @@ export default function StocksPage() {
   };
 
   const filtered = useMemo(() => {
-    let result = stocks.filter(
+    const result = stocks.filter(
       (s) =>
         (s.ticker.toLowerCase().includes(search.toLowerCase()) ||
           s.name.toLowerCase().includes(search.toLowerCase())) &&
@@ -93,7 +90,7 @@ export default function StocksPage() {
     return result;
   }, [stocks, search, selectedSector, sortField, sortDir]);
 
-  const SortIcon = ({ field }: { field: SortField }) => {
+  const renderSortIcon = (field: SortField) => {
     if (sortField !== field)
       return (
         <ArrowUpDown
@@ -247,7 +244,7 @@ export default function StocksPage() {
                         onClick={() => handleSort("ticker")}
                       >
                         <div className="flex items-center">
-                          Ticker <SortIcon field="ticker" />
+                          Ticker {renderSortIcon("ticker")}
                         </div>
                       </th>
                       <th className="text-left py-4 px-6 font-semibold hidden md:table-cell">
@@ -258,7 +255,7 @@ export default function StocksPage() {
                         onClick={() => handleSort("price")}
                       >
                         <div className="flex items-center justify-end">
-                          Price <SortIcon field="price" />
+                          Price {renderSortIcon("price")}
                         </div>
                       </th>
                       <th
@@ -266,7 +263,7 @@ export default function StocksPage() {
                         onClick={() => handleSort("changePercent")}
                       >
                         <div className="flex items-center justify-end">
-                          Change <SortIcon field="changePercent" />
+                          Change {renderSortIcon("changePercent")}
                         </div>
                       </th>
                       <th className="text-right py-4 px-6 font-semibold hidden lg:table-cell">
@@ -277,7 +274,7 @@ export default function StocksPage() {
                         onClick={() => handleSort("marketCap")}
                       >
                         <div className="flex items-center justify-end">
-                          Mkt Cap <SortIcon field="marketCap" />
+                          Mkt Cap {renderSortIcon("marketCap")}
                         </div>
                       </th>
                       <th
@@ -285,7 +282,7 @@ export default function StocksPage() {
                         onClick={() => handleSort("volume")}
                       >
                         <div className="flex items-center justify-end">
-                          Volume <SortIcon field="volume" />
+                          Volume {renderSortIcon("volume")}
                         </div>
                       </th>
                       <th className="text-center py-4 px-6 font-semibold">
@@ -326,8 +323,7 @@ export default function StocksPage() {
                         <td className="py-4 px-6 text-right">
                           <div className="flex justify-end">
                             <ChangeIndicator
-                              value={stock.change}
-                              percent={stock.changePercent}
+                              value={stock.changePercent / 100}
                             />
                           </div>
                         </td>
@@ -397,8 +393,7 @@ export default function StocksPage() {
                       {formatCurrency(stock.price)}
                     </span>
                     <ChangeIndicator
-                      value={stock.change}
-                      percent={stock.changePercent}
+                      value={stock.changePercent / 100}
                     />
                   </div>
 

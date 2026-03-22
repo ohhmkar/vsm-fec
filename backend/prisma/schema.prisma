@@ -28,6 +28,8 @@ model PlayerAccount {
   isBanned Boolean @default(false) @map("is_banned")
 
   portfolio PlayerPortfolio?
+  powerups  PlayerPowerups?
+
 
   @@map("player_account")
 }
@@ -100,4 +102,19 @@ model Transaction {
 enum TransactionType {
   BUY
   SELL
+}
+
+model PlayerPowerups {
+  playerId String @id @map("player_id") @db.Uuid
+  player   PlayerAccount @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  insiderTradingStatus     String  @default("Unused") @map("insider_trading_status") @db.VarChar
+  muftKaPaisaStatus        String  @default("Unused") @map("muft_ka_paisa_status") @db.VarChar
+  stockBettingStatus       String  @default("Unused") @map("stock_betting_status") @db.VarChar
+  stockBettingAmount       Float?  @map("stock_betting_amount")
+  stockBettingPrediction   String? @map("stock_betting_prediction") @db.Char(2)
+  stockBettingLockedSymbol String? @map("stock_betting_locked_symbol") @db.VarChar
+  stockBettingLockedPrice  Float?  @map("stock_betting_locked_price")
+
+  @@map("player_powerups")
 }

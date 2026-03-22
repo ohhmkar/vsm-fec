@@ -1,12 +1,5 @@
 import { IGameState } from '../../types';
-import {
-  playerPortfolio,
-  playerPowerups,
-  stocks,
-  stockGameData,
-} from '../../models/index';
-import { db } from '../../services/index';
-import { eq, lte, sql } from 'drizzle-orm';
+import { prisma } from '../../services/prisma.service';
 import { arrayToMap, roundTo2Places } from '../../common/utils';
 import { muftPaisa } from '../../common/game.config';
 
@@ -15,154 +8,158 @@ function calculateNewStockPrice(price: number, volatility: number) {
   return roundTo2Places(price * valChange);
 }
 
-export function updateStocks(gameState: IGameState) {
-  return db.transaction(async (trx) => {
-    const stocksData = await trx
-      .select({
-        symbol: stocks.symbol,
-        price: stocks.price,
-        currentVolatality: stocks.volatility,
-      })
-      .from(stocks)
-      .where(lte(stocks.roundIntorduced, gameState.roundNo));
-
-    const stockGameDataMap = arrayToMap(
-      await trx
-        .select()
-        .from(stockGameData)
-        .where(eq(stockGameData.forRound, gameState.roundNo + 1)),
-      'symbol',
-    );
-
-    const updateAllStocks = stocksData.map((stockData) => {
-      const newPrice = calculateNewStockPrice(
-        stockData.price,
-        stockData.currentVolatality,
-      );
-      return trx
-        .update(stocks)
-        .set({
-          price: newPrice,
-          volatility: stockGameDataMap.get(stockData.symbol)?.volatility ?? 0,
-        })
-        .where(eq(stocks.symbol, stockData.symbol));
+export async function updateStocks(gameState: IGameState) {
+  return prisma.$transaction(async (tx) => {
+    const stocksData = await tx.stock.findMany({
+      where: {
+        roundIntroduced: {
+          lte: gameState.roundNo,
+        },
+      },
+      select: {
+        symbol: true,
+        price: true,
+        volatility: true,
+      },
     });
-    await Promise.all(updateAllStocks);
+
+    const nextGameData = await tx.stockGameData.findMany({
+      where: {
+        forRound: gameState.roundNo + 1,
+      },
+    });
+    const nextGameDataMap = arrayToMap(nextGameData, 'symbol');
+
+    for (const stock of stocksData) {
+      const newPrice = calculateNewStockPrice(stock.price, stock.volatility);
+      const nextVolatility = nextGameDataMap.get(stock.symbol)?.volatility ?? 0;
+
+      await tx.stock.update({
+        where: { symbol: stock.symbol },
+        data: {
+          price: newPrice,
+          volatility: nextVolatility,
+        },
+      });
+    }
   });
 }
 
-export function updatePlayerPortfolio(gameState: IGameState) {
-  return db.transaction(async (trx) => {
-    const players = await trx.select().from(playerPortfolio);
-    const stocksData = arrayToMap(
-      await trx
-        .select()
-        .from(stocks)
-        .where(lte(stocks.roundIntorduced, gameState.roundNo)),
-      'symbol',
-    );
+export async function updatePlayerPortfolio(gameState: IGameState) {
+  return prisma.$transaction(async (tx) => {
+    const players = await tx.playerPortfolio.findMany(); // Assuming all portfolios needed
+    const activeStocks = await tx.stock.findMany({
+      where: {
+        roundIntroduced: {
+          lte: gameState.roundNo,
+        },
+      },
+    });
+    const stocksMap = arrayToMap(activeStocks, 'symbol');
 
-    const updateAllPlayerPortfolio = players.map((player) => {
-      const playerPort = player.stocks;
+    for (const player of players) {
+      const playerStocks = player.stocks as any[]; // Need defined type for stocks JSON
+      if (!Array.isArray(playerStocks)) continue;
 
-      const totalPortfolioValue = playerPort.reduce((acc: number, stock) => {
-        const stockVolumeOwned = stock.volume || 0;
-        const stockValue = stocksData.get(stock.symbol)?.price || 0;
-        return acc + stockVolumeOwned * stockValue;
+      const totalValue = playerStocks.reduce((acc, s) => {
+        const volume = s.volume || 0;
+        const price = stocksMap.get(s.symbol)?.price || 0;
+        return acc + volume * price;
       }, 0);
 
-      return trx
-        .update(playerPortfolio)
-        .set({ totalPortfolioValue })
-        .where(eq(playerPortfolio.playerId, player.playerId));
-    });
-    await Promise.all(updateAllPlayerPortfolio);
+      await tx.playerPortfolio.update({
+        where: { playerId: player.playerId },
+        data: {
+          totalPortfolioValue: totalValue,
+        },
+      });
+    }
   });
 }
 
 export async function updatePlayerStatus() {
-  return db.transaction(async (trx) => {
-    const players = await trx.select().from(playerPowerups);
-    const stocksData = arrayToMap(
-      await trx.select({ price: stocks.price, id: stocks.symbol }).from(stocks),
-      'id',
-    );
-    const updateAllPlayerStatus: Promise<object>[] = [];
+  return prisma.$transaction(async (tx) => {
+    // Fetch all players with active powerups? Or all players?
+    // Original fetched ALL playerPowerups
+    const powerups = await tx.playerPowerups.findMany();
+    const stocks = await tx.stock.findMany({
+      select: { symbol: true, price: true },
+    });
+    const stocksMap = arrayToMap(stocks, 'symbol');
 
-    players.forEach((player) => {
-      const muftKaPaisaStatus = player.muftKaPaisaStatus;
-      const stockBettingStatus = player.stockBettingStatus;
+    for (const p of powerups) {
+      if (p.muftKaPaisaStatus === 'Active') {
+        await tx.playerPowerups.update({
+          where: { playerId: p.playerId },
+          data: { muftKaPaisaStatus: 'Used' },
+        });
 
-      if (muftKaPaisaStatus === 'Active') {
-        updateAllPlayerStatus.push(
-          trx
-            .update(playerPowerups)
-            .set({ muftKaPaisaStatus: 'Used' })
-            .where(eq(playerPowerups.playerId, player.playerId)),
-        );
-        updateAllPlayerStatus.push(
-          trx
-            .update(playerPortfolio)
-            .set({
-              bankBalance: sql`${playerPortfolio.bankBalance} - ${muftPaisa}`,
-            })
-            .where(eq(playerPortfolio.playerId, player.playerId)),
-        );
+        await tx.playerPortfolio.update({
+          where: { playerId: p.playerId },
+          data: {
+            bankBalance: {
+              decrement: muftPaisa, // Matching original logic: bankBalance - muftPaisa
+            },
+          },
+        });
       }
 
-      if (stockBettingStatus === 'Active') {
-        updateAllPlayerStatus.push(
-          trx
-            .update(playerPowerups)
-            .set({ stockBettingStatus: 'Used' })
-            .where(eq(playerPowerups.playerId, player.playerId)),
-        );
+      if (p.stockBettingStatus === 'Active') {
+        await tx.playerPowerups.update({
+          where: { playerId: p.playerId },
+          data: { stockBettingStatus: 'Used' },
+        });
 
-        const stockBettingAmount = player.stockBettingAmount;
-        const stockBettingPrediction = player.stockBettingPrediction;
-        const stockBettingLockedPrice = player.stockBettingLockedPrice;
-        const stockBettingLockedSymbol = player.stockBettingLockedSymbol;
+        const amount = p.stockBettingAmount;
+        const symbol = p.stockBettingLockedSymbol;
+        const lockedPrice = p.stockBettingLockedPrice;
+        const prediction = p.stockBettingPrediction;
 
         if (
-          !stockBettingAmount ||
-          !stockBettingPrediction ||
-          !stockBettingLockedPrice ||
-          !stockBettingLockedSymbol
+          amount === null ||
+          symbol === null ||
+          lockedPrice === null ||
+          prediction === null
         ) {
           throw new Error('Stock Betting data is missing.');
         }
 
-        const newPrice = stocksData.get(stockBettingLockedSymbol)?.price;
-        if (!newPrice) {
-          throw new Error('Stock Betting data is missing.');
+        const currentStock = stocksMap.get(symbol);
+        if (!currentStock) {
+          throw new Error(`Stock ${symbol} not found for betting calculation.`);
         }
 
-        const actualPrediction =
-          newPrice > stockBettingLockedPrice ? 'UP' : 'DOWN';
-        const isPredictionCorrect = actualPrediction === stockBettingPrediction;
+        const newPrice = currentStock.price;
+        const actualPrediction = newPrice > lockedPrice ? 'UP' : 'DOWN';
+        const isCorrect = actualPrediction === prediction;
 
-        if (isPredictionCorrect) {
-          updateAllPlayerStatus.push(
-            trx
-              .update(playerPortfolio)
-              .set({
-                bankBalance: sql`${playerPortfolio.bankBalance} + ${2 * stockBettingAmount}`,
-              })
-              .where(eq(playerPortfolio.playerId, player.playerId)),
-          );
+        if (isCorrect) {
+          await tx.playerPortfolio.update({
+            where: { playerId: p.playerId },
+            data: {
+              bankBalance: {
+                increment: 2 * amount,
+              },
+            },
+          });
         } else {
-          updateAllPlayerStatus.push(
-            trx
-              .update(playerPortfolio)
-              .set({
-                bankBalance: sql`${playerPortfolio.bankBalance} - ${stockBettingAmount}`,
-              })
-              .where(eq(playerPortfolio.playerId, player.playerId)),
-          );
+          // If incorrect, money was wagered? Or just lost?
+          // Original logic: bankBalance - stockBettingAmount
+          // But wait, usually betting deducts amount upfront.
+          // If logic here deducts, then it wasn't deducted upfront.
+          // And win gives 2 * amount (original + win). So net profit = amount.
+          // So if lose, deduct amount. Net loss = amount.
+          // This matches line 157: bankBalance - stockBettingAmount.
+          await tx.playerPortfolio.update({
+            where: { playerId: p.playerId },
+            data: {
+              bankBalance: {
+                decrement: amount,
+              },
+            },
+          });
         }
       }
-    });
-
-    await Promise.all(updateAllPlayerStatus);
+    }
   });
 }

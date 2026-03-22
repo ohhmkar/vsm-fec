@@ -7,9 +7,7 @@ import {
   Unauthorized,
 } from '../../errors/index';
 import { StatusCodes } from 'http-status-codes';
-import { db } from '../../services/index';
-import { users } from '../../models/index';
-import { eq } from 'drizzle-orm'; // Fixed import: eq comes from drizzle-orm
+import { prisma } from '../../services/prisma.service';
 import { createToken } from '../../common/utils';
 import { initializePlayer } from '../../game/helpers/initializers';
 import bcrypt from 'bcryptjs';
@@ -18,20 +16,30 @@ type RegisterUserHandler = ReqHandler<IRegisterUserDto>;
 
 export const registerUser: RegisterUserHandler = async function (req, res) {
   const { email, password, u1Name, u2Name, isAdmin } = req.body;
+  
   if (!email || !password || !u1Name) {
     throw new BadRequest('Email, Password, and Player 1 Name are Required');
   }
 
-  // Hash password
+  const existing = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (existing) {
+    throw new BadRequest('Email Already Exists');
+  }
+
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
 
-  await db.insert(users).values({ 
-    email, 
-    password: hashedPassword, 
-    u1Name, 
-    u2Name, 
-    isAdmin 
+  await prisma.user.create({
+    data: {
+      email,
+      password: hashedPassword,
+      u1Name,
+      u2Name,
+      isAdmin: isAdmin || false,
+    },
   });
 
   res.status(StatusCodes.CREATED).json({
@@ -43,20 +51,23 @@ type LoginUserHandler = ReqHandler<ILoginUserDto>;
 
 export const loginUser: LoginUserHandler = async function (req, res) {
   const { email, password } = req.body;
-  const result = await db.select().from(users).where(eq(users.email, email));
-  if (result.length === 0) {
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
     throw new NotFound('User Not Found');
   }
 
-  const user = result[0];
   const isPasswordMatch = await bcrypt.compare(password, user.password);
   if (!isPasswordMatch) {
     throw new Unauthenticated('Invalid Password');
   }
 
   if (user.isAdmin) {
-    // Admins use loginAdmin, players use loginUser
-    throw new Unauthorized('Admin Check: User is an Admin, use appropriate login route.');
+    throw new Unauthorized(
+      'Admin Check: User is an Admin, use appropriate login route.',
+    );
   }
 
   const playerId = await initializePlayer(user.id);
@@ -70,19 +81,21 @@ export const loginUser: LoginUserHandler = async function (req, res) {
 
 export const loginAdmin: LoginUserHandler = async function (req, res) {
   const { email, password } = req.body;
-  const result = await db.select().from(users).where(eq(users.email, email));
-  if (result.length === 0) {
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
     throw new NotFound('User Not Found');
   }
 
-  const user = result[0];
   const isPasswordMatch = await bcrypt.compare(password, user.password);
   if (!isPasswordMatch) {
     throw new Unauthenticated('Invalid Password');
   }
 
   if (!user.isAdmin) {
-    throw new Unauthorized('User is not an Admin');
+    throw new Unauthorized('User is not an admin');
   }
 
   const token = createToken({ playerId: user.id, admin: true });

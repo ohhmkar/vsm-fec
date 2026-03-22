@@ -66,6 +66,7 @@ export interface User {
   name: string;
   avatar?: string;
   memberSince: string;
+  isAdmin?: boolean;
 }
 
 export interface PortfolioSnapshot {

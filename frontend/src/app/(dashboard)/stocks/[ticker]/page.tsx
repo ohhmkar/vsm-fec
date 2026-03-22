@@ -1,20 +1,15 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
-  TrendingUp,
-  TrendingDown,
-  ChevronDown,
   Check,
   AlertCircle,
   Plus,
   Minus,
   Wallet,
-  PieChart,
-  DollarSign,
   Activity
 } from 'lucide-react';
 import Link from 'next/link';
@@ -22,13 +17,12 @@ import { useMarketStore } from '@/store/marketStore';
 import { usePortfolioStore } from '@/store/portfolioStore';
 import { StockCandlestickChart } from '@/components/charts/StockCandlestickChart';
 import { ChangeIndicator } from '@/components/ui/ChangeIndicator';
-import { Modal } from '@/components/ui/Modal';
 import { PageWrapper } from '@/components/ui/PageWrapper';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { formatCurrency, formatCompactCurrency, formatVolume } from '@/lib/utils';
 import { clsx } from 'clsx';
 
-const TIMEFRAMES = ['1D', '1W', '1M', '3M', '1Y', 'ALL'];
+const TIMEFRAMES = ["1m", "10m", "30m", "1 hr", "ALL"];
 
 export default function StockDetailPage() {
   const params = useParams();
@@ -80,7 +74,7 @@ export default function StockDetailPage() {
         setSharesStr('');
         setTimeout(() => setTradeResult(null), 3000);
       }
-    } catch (e) {
+    } catch {
       setTradeResult({ success: false, message: 'Trade failed. Please try again.' });
     } finally {
       setIsSubmitting(false);
@@ -105,7 +99,7 @@ export default function StockDetailPage() {
         <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
           <AlertCircle className="w-12 h-12 text-[var(--accent-red)]" />
           <h2 className="text-xl font-bold">Stock Not Found</h2>
-          <p className="text-[var(--text-secondary)]">The ticker symbol "{ticker}" does not exist.</p>
+          <p className="text-[var(--text-secondary)]">The ticker symbol &quot;{ticker}&quot; does not exist.</p>
           <Link href="/stocks" className="text-[var(--accent-blue)] hover:underline">
             ← Back to Market
           </Link>
@@ -154,8 +148,7 @@ export default function StockDetailPage() {
         <div className="text-right">
           <div className="text-3xl font-bold tracking-tight font-mono">{formatCurrency(stock.price)}</div>
           <ChangeIndicator 
-            value={stock.change} 
-            percent={stock.changePercent} 
+            value={stock.changePercent / 100} 
             className="justify-end text-lg"
           />
         </div>
@@ -189,7 +182,7 @@ export default function StockDetailPage() {
               </div>
             </div>
             <div className="h-[350px] w-full">
-              <StockCandlestickChart data={stock.history} />
+              <StockCandlestickChart data={stock.history} timeframe={timeframe} />
             </div>
           </div>
 
@@ -367,7 +360,7 @@ export default function StockDetailPage() {
                 </div>
                 <div>
                   <div className="text-xs text-[var(--text-secondary)] mb-1">Total Return</div>
-                  <ChangeIndicator value={holding.pnl} percent={holding.pnlPercent} />
+                  <ChangeIndicator value={holding.pnlPercent / 100} />
                 </div>
               </div>
             </div>

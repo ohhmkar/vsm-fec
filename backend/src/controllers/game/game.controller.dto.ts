@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
-export const stockBuySellDtoSchema = z.object({
-  stock: z.string(),
-  amount: z.coerce.number(),
+export const tradeDtoSchema = z.object({
+  action: z.enum(['BUY', 'SELL']),
+  symbol: z.string(),
+  quantity: z.coerce.number(),
 });
 
-export type IBuySellDto = z.infer<typeof stockBuySellDtoSchema>;
+export type ITradeDto = z.infer<typeof tradeDtoSchema>;

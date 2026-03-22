@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldAlert, Users, TrendingUp, DollarSign } from 'lucide-react';
+import { ShieldAlert, Users, TrendingUp, Play, Square, Send, Radio, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { PageWrapper } from '@/components/ui/PageWrapper';
 import { formatCurrency } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+type NotificationType = 'info' | 'success' | 'warning' | 'error';
 
 interface PlayerData {
   id: string;
@@ -25,6 +27,11 @@ export default function AdminDashboardPage() {
   const [players, setPlayers] = useState<PlayerData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState('');
+  const [notifyType, setNotifyType] = useState<NotificationType>('info');
+  const [notifyLoading, setNotifyLoading] = useState(false);
+  const [actionError, setActionError] = useState('');
 
   // Redirect non-admins natively
   useEffect(() => {
@@ -55,9 +62,54 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     fetchPlayers();
-    const interval = setInterval(fetchPlayers, 15000); // refresh every 15s
+    const interval = setInterval(fetchPlayers, 15000);
     return () => clearInterval(interval);
   }, [user]);
+
+  const executeAction = async (action: 'start-game' | 'start-round' | 'terminate-game') => {
+    if (!user?.id) return;
+    setActionLoading(action);
+    setActionError('');
+    try {
+      const res = await fetch(`${BACKEND_URL}/admin/${action}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${user.id}` },
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Action failed');
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Action failed');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const sendAnnouncement = async () => {
+    if (!user?.id || !announcement.trim()) return;
+    setNotifyLoading(true);
+    setActionError('');
+    try {
+      const res = await fetch(`${BACKEND_URL}/admin/notify`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${user.id}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: announcement.trim(), type: notifyType }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Failed to send announcement');
+      }
+      setAnnouncement('');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to send announcement');
+    } finally {
+      setNotifyLoading(false);
+    }
+  };
 
   if (user && !user.email.includes('admin')) return null;
 
@@ -86,6 +138,98 @@ export default function AdminDashboardPage() {
               Refresh Data
             </button>
           </div>
+        </div>
+
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Radio size={18} className="text-[var(--accent-red)]" />
+            <h2 className="text-lg font-semibold">Action Center</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-[var(--text-secondary)]">Game Controls</h3>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => executeAction('start-game')}
+                  disabled={actionLoading !== null}
+                  className="flex items-center gap-2 px-4 py-2 bg-[var(--accent-green)] text-white rounded-xl hover:bg-green-600 transition-colors font-medium text-sm disabled:opacity-50"
+                >
+                  {actionLoading === 'start-game' ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Play size={16} />
+                  )}
+                  Start Game
+                </button>
+                <button
+                  onClick={() => executeAction('start-round')}
+                  disabled={actionLoading !== null}
+                  className="flex items-center gap-2 px-4 py-2 bg-[var(--accent-blue)] text-white rounded-xl hover:bg-blue-600 transition-colors font-medium text-sm disabled:opacity-50"
+                >
+                  {actionLoading === 'start-round' ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <TrendingUp size={16} />
+                  )}
+                  Start Round
+                </button>
+                <button
+                  onClick={() => executeAction('terminate-game')}
+                  disabled={actionLoading !== null}
+                  className="flex items-center gap-2 px-4 py-2 bg-[var(--accent-red)] text-white rounded-xl hover:bg-red-600 transition-colors font-medium text-sm disabled:opacity-50"
+                >
+                  {actionLoading === 'terminate-game' ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Square size={16} />
+                  )}
+                  Terminate Game
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-[var(--text-secondary)]">Global Announcement</h3>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={announcement}
+                  onChange={(e) => setAnnouncement(e.target.value)}
+                  placeholder="Enter notification message..."
+                  className="flex-1 px-3 py-2 bg-[var(--bg-base)] border border-[var(--border-color)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-blue)]"
+                />
+                <select
+                  value={notifyType}
+                  onChange={(e) => setNotifyType(e.target.value as NotificationType)}
+                  className="px-3 py-2 bg-[var(--bg-base)] border border-[var(--border-color)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-blue)]"
+                >
+                  <option value="info">Info</option>
+                  <option value="success">Success</option>
+                  <option value="warning">Warning</option>
+                  <option value="error">Error</option>
+                </select>
+                <button
+                  onClick={sendAnnouncement}
+                  disabled={notifyLoading || !announcement.trim()}
+                  className="flex items-center gap-2 px-4 py-2 bg-[var(--accent-purple)] text-white rounded-xl hover:bg-purple-600 transition-colors font-medium text-sm disabled:opacity-50"
+                >
+                  {notifyLoading ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Send size={16} />
+                  )}
+                  Send
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {actionError && (
+            <div className="mt-4 p-3 bg-[var(--accent-red)]/10 border border-[var(--accent-red)]/20 rounded-xl text-[var(--accent-red)] text-sm">
+              {actionError}
+            </div>
+          )}
         </div>
 
         {error && (

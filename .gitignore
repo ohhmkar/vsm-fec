@@ -48,3 +48,9 @@ logs/
 data/
 postgres-data/
 migrations/meta/_journal.json
+
+.DS_Store
+*.pem
+*.log
+
+

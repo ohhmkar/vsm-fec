@@ -3,10 +3,8 @@ import { StatusCodes } from 'http-status-codes';
 import {
   getLeaderboard,
   getNews,
-  getPlayerProfile,
   getPlayerPortfolio,
   getStocks,
-  getPlayerBalence,
 } from '../../../game/game.handlers';
 import { getGameState } from '../../../game/game';
 
@@ -43,28 +41,6 @@ export const getGameInfoHandler: InfoEndpointHandler = function (req, res) {
   });
 };
 
-export const getProfileHandler: InfoEndpointHandler = async function (
-  req,
-  res,
-) {
-  if (req.player.admin) {
-    res.status(StatusCodes.OK).json({
-      status: 'Success',
-      data: {
-        name: 'Administrator',
-        email: 'admin@system.local',
-        isAdmin: true,
-      },
-    });
-    return;
-  }
-  
-  const playerProfile = await getPlayerProfile(req.player.playerId);
-  res.status(StatusCodes.OK).json({
-    status: 'Success',
-    data: playerProfile,
-  });
-};
 
 export const getPortfolioHandler: InfoEndpointHandler = async function (
   req,
@@ -74,9 +50,9 @@ export const getPortfolioHandler: InfoEndpointHandler = async function (
     res.status(StatusCodes.OK).json({
       status: 'Success',
       data: {
+        valuation: 0,
         bankBalance: 0,
-        totalPortfolioValue: 0,
-        stocks: [],
+        portfolio: [],
       },
     });
     return;
@@ -84,28 +60,6 @@ export const getPortfolioHandler: InfoEndpointHandler = async function (
 
   const playerData = await getPlayerPortfolio(req.player.playerId);
 
-  res.status(StatusCodes.OK).json({
-    status: 'Success',
-    data: playerData,
-  });
-};
-
-export const getBalenceHandler: InfoEndpointHandler = async function (
-  req,
-  res,
-) {
-  if (req.player.admin) {
-    res.status(StatusCodes.OK).json({
-      status: 'Success',
-      data: {
-        bankBalance: 0,
-        totalPortfolioValue: 0,
-      },
-    });
-    return;
-  }
-
-  const playerData = await getPlayerBalence(req.player.playerId);
   res.status(StatusCodes.OK).json({
     status: 'Success',
     data: playerData,

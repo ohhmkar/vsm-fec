@@ -15,3 +15,9 @@ export const initialBankBalance = isNaN(envInitialBankBalance)
 
 const envMuftPaisa = Number(process.env.MUFT_KA_PAISA);
 export const muftPaisa = isNaN(envMuftPaisa) ? 0 : envMuftPaisa;
+
+const envPriceImpact = Number(process.env.PRICE_IMPACT_MULTIPLIER);
+export const priceImpactMultiplier = isNaN(envPriceImpact) ? 0.5 : envPriceImpact;
+
+const envTotalSupply = Number(process.env.TOTAL_SUPPLY_PER_STOCK);
+export const totalSupplyPerStock = isNaN(envTotalSupply) ? 10000 : envTotalSupply;

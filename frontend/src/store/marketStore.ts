@@ -5,6 +5,8 @@ import { io, Socket } from 'socket.io-client';
 import { Stock } from '@/types';
 import { generateAllStocks, simulatePriceTick } from '@/lib/stockEngine';
 import { useAuthStore } from './authStore';
+import { useNewsStore } from './newsStore';
+import { useNotificationStore } from './notificationStore';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080';
 
@@ -40,9 +42,10 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
     // Setup Socket Connect
     const socket = get().socket;
     if (!socket) {
+      const token = useAuthStore.getState().user?.id; // JWT
       const newSocket = io(BACKEND_URL, {
-        auth: {
-          token: useAuthStore.getState().user?.id // JWT
+        extraHeaders: {
+          authorization: token ? `Bearer ${token}` : ''
         }
       });
 
@@ -54,6 +57,60 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
       });
       newSocket.on('game:stage:CALCULATION_STAGE', () => {
         get().syncWithBackend();
+      });
+
+      newSocket.on('news:update', (news: string[]) => {
+        useNewsStore.setState({ news });
+      });
+
+      newSocket.on('admin:notification', (notification: {
+        id: string;
+        message: string;
+        type: 'info' | 'success' | 'warning' | 'error';
+        timestamp: number;
+      }) => {
+        useNotificationStore.getState().addNotification(notification);
+      });
+
+      newSocket.on('stock:price-update', (payload: {
+        symbol: string,
+        price: number,
+        previousPrice: number,
+        change: number,
+        changePercent: number,
+        tradeType: 'BUY' | 'SELL',
+        quantity: number,
+        timestamp: number
+      }) => {
+        set((state) => {
+          const newStocks = state.stocks.map((stock) => {
+            if (stock.ticker !== payload.symbol) return stock;
+
+            const newPrice = payload.price;
+            
+            // Append incoming tick to history
+            const newHistory = [...stock.history, {
+              date: new Date(payload.timestamp).toISOString(),
+              open: newPrice,
+              high: newPrice,
+              low: newPrice,
+              close: newPrice,
+              volume: payload.quantity
+            }];
+
+            return {
+              ...stock,
+              price: newPrice,
+              change: payload.change,
+              changePercent: payload.changePercent,
+              history: newHistory,
+              dayHigh: Math.max(stock.dayHigh, newPrice),
+              dayLow: Math.min(stock.dayLow, newPrice),
+            };
+          });
+
+          return { stocks: newStocks, lastUpdated: Date.now() };
+        });
       });
 
       set({ socket: newSocket });

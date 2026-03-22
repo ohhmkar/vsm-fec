@@ -69,15 +69,19 @@ export function StockCandlestickChart({
     let startTime = endTime;
 
     switch (timeframe) {
-      case "30M":
+      case "1m": // 1 minute
+        startTime = endTime - 1 * 60 * 1000;
+        break;
+      case "10m": // 10 minutes
+        startTime = endTime - 10 * 60 * 1000;
+        break;
+      case "30m": // 30 minutes
         startTime = endTime - 30 * 60 * 1000;
         break;
-      case "1H":
+      case "1 hr": // 1 hour
         startTime = endTime - 60 * 60 * 1000;
         break;
-      case "2H":
-        startTime = endTime - 120 * 60 * 1000;
-        break;
+      case "ALL":
       default:
         startTime = 0; // Show all
     }
@@ -112,7 +116,7 @@ export function StockCandlestickChart({
             type: "candlestick" as const,
             label: "OHLC",
             data: filteredData.map((d) => ({
-              x: new Date(d.date).valueOf(), // adapter-date-fns handles valueOf or Date object
+              x: new Date(d.date).valueOf(), // adapter-date-fns handles valueOf or Date object, but chartjs-financial plugin requires valueOf
               o: d.open,
               h: d.high,
               l: d.low,
@@ -129,7 +133,8 @@ export function StockCandlestickChart({
               unchanged: "rgba(100, 100, 100, 1)",
             },
           },
-        ],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ] as any,
       };
     }
   }, [filteredData, chartType]);
@@ -150,15 +155,17 @@ export function StockCandlestickChart({
       x: {
         type: "time",
         time: {
-          // Force minute level granularity for short timeframes, auto for others
           unit:
-            timeframe === "30M" || timeframe === "1H" || timeframe === "2H"
-              ? "minute"
-              : undefined,
+            timeframe === "1m"
+              ? "second"
+              : timeframe === "10m" || timeframe === "30m" || timeframe === "1 hr"
+                ? "minute"
+                : undefined,
           displayFormats: {
             minute: "HH:mm",
-            hour: "dd MMM HH:mm",
+            hour: "HH:mm",
             day: "dd MMM",
+            month: "MMM yyyy",
           },
           tooltipFormat: "dd MMM yyyy HH:mm",
         },

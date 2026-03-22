@@ -1,11 +1,4 @@
-import { db } from '../../services/database.service';
-import {
-  news,
-  stocks,
-  playerAccount,
-  users,
-  stockGameData,
-} from '../../models/index';
+import { prisma } from '../../services/prisma.service';
 
 export async function uploadNews(
   newsData: {
@@ -14,7 +7,9 @@ export async function uploadNews(
     roundApplicable: number;
   }[],
 ) {
-  await db.insert(news).values(newsData);
+  await prisma.news.createMany({
+    data: newsData,
+  });
 }
 
 export async function uploadStock(
@@ -25,7 +20,15 @@ export async function uploadStock(
     roundIntorduced: number;
   }[],
 ) {
-  await db.insert(stocks).values(stockData);
+  const data = stockData.map((s) => ({
+    symbol: s.symbol,
+    volatility: s.volatility,
+    price: s.price,
+    roundIntroduced: s.roundIntorduced,
+  }));
+  await prisma.stock.createMany({
+    data,
+  });
 }
 
 export async function uploadStockUpdate(
@@ -35,24 +38,21 @@ export async function uploadStockUpdate(
     forRound: number;
   }[],
 ) {
-  await db.insert(stockGameData).values(stockData);
+  await prisma.stockGameData.createMany({
+    data: stockData,
+  });
 }
 
 export async function flushDatabase() {
-  // eslint-disable-next-line drizzle/enforce-delete-with-where
-  await db.delete(news);
-  // eslint-disable-next-line drizzle/enforce-delete-with-where
-  await db.delete(stocks);
-  // eslint-disable-next-line drizzle/enforce-delete-with-where
-  await db.delete(playerAccount);
+  await prisma.news.deleteMany();
+  await prisma.stock.deleteMany();
+  await prisma.playerAccount.deleteMany();
 }
 
 export async function flushPlayerTable() {
-  // eslint-disable-next-line drizzle/enforce-delete-with-where
-  await db.delete(playerAccount);
+  await prisma.playerAccount.deleteMany();
 }
 
 export async function flushUserTable() {
-  // eslint-disable-next-line drizzle/enforce-delete-with-where
-  await db.delete(users);
+  await prisma.user.deleteMany();
 }

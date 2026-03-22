@@ -3,8 +3,8 @@ import { blockGameRequest } from '../../middlewares/block-requests.middleware';
 import { validatorFactory } from '../../middlewares/validator.middleware';
 import { blockAdmin } from '../../middlewares/authorizer.middleware';
 import { checkRoundActive } from '../../middlewares/gameStatus.middleware';
-import { stockBuySellDtoSchema } from './game.controller.dto';
-import { buyStockHandler, sellStockHandler } from './game.controller';
+import { tradeDtoSchema } from './game.controller.dto';
+import { executeTradeHandler } from './game.controller';
 import { infoRouter } from './info/info.router';
 import { powerupRouter } from './powerup/powerup.router';
 
@@ -22,18 +22,10 @@ gameRouter.use('/powerup', blockAdmin, blockGameRequest, powerupRouter);
 // - Check if round is active (DB check)
 // - Block if game request logic says so (Memory check - blockGameRequest)
 gameRouter.post(
-  '/buy-stock',
+  '/portfolio/trades',
   blockAdmin,
   blockGameRequest,
   checkRoundActive,
-  validatorFactory(stockBuySellDtoSchema),
-  buyStockHandler,
-);
-gameRouter.post(
-  '/sell-stock',
-  blockAdmin,
-  blockGameRequest,
-  checkRoundActive,
-  validatorFactory(stockBuySellDtoSchema),
-  sellStockHandler,
+  validatorFactory(tradeDtoSchema),
+  executeTradeHandler,
 );

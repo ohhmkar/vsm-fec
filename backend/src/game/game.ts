@@ -2,13 +2,13 @@ import type { Server } from 'socket.io';
 import { IGameState } from '../types';
 import EventEmitter from 'events';
 import { logger } from '../services/index';
-import { flushPlayerTable } from './helpers/chore';
 import {
   updatePlayerStatus,
   updatePlayerPortfolio,
   updateStocks,
 } from '../game/helpers/sheduled-task';
 import { maxGameRounds, roundDuration } from '../common/game.config';
+import { gameService } from '../services/game.logic';
 
 const gameEmitter = new EventEmitter();
 
@@ -17,6 +17,7 @@ const gameOFF = Symbol();
 const gameOPEN = Symbol();
 const gameCLOSE = Symbol();
 let timeoutId: NodeJS.Timeout;
+let leaderboardInterval: NodeJS.Timeout;
 
 const gameState: IGameState = {
   roundNo: 0,
@@ -29,9 +30,8 @@ export function getGameState() {
 
 export async function startGame() {
   try {
-    logger.info('Flushing Player Table');
-    await flushPlayerTable();
-    logger.info('Flushing Complete');
+    // Sync DB game state
+    await gameService.initializeGame();
 
     gameState.stage = 'ON';
     logger.info('Game is ON: Server Open to Login Requests');
@@ -41,7 +41,7 @@ export async function startGame() {
   gameEmitter.emit(gameON);
 }
 
-export function startRound() {
+export async function startRound() {
   const nextRound = gameState.roundNo + 1;
   if (nextRound === 1) {
     logger.info('Game is OPEN: Server Open to Game Requests');
@@ -55,18 +55,44 @@ export function startRound() {
   gameState.roundNo = nextRound;
   gameState.stage = 'OPEN';
   logger.info(`Starting Round ${gameState.roundNo}...`);
+
+  // Sync DB game state — mark round as active so checkRoundActive middleware allows trades
+  try {
+    await gameService.startRound();
+  } catch (error) {
+    logger.error('Failed to sync DB round state:', error);
+  }
+
   gameEmitter.emit(gameOPEN);
+
+  import('../services/socket.service').then(({ broadcastLeaderboard, broadcastNews }) => {
+    // Broadcast news slightly after round start
+    setTimeout(() => broadcastNews(), 1000);
+    
+    // Broadcast leaderboard periodically throughout the active trading round
+    leaderboardInterval = setInterval(() => {
+      broadcastLeaderboard();
+    }, 5000);
+  });
 
   timeoutId = setTimeout(async () => {
     gameState.stage = 'CLOSE';
     gameEmitter.emit(gameCLOSE);
-
+    clearInterval(leaderboardInterval);
     await endRound();
   }, roundDuration);
 }
 
 async function endRound() {
   logger.info('Game is CLOSED: Server Closed to Game Requests');
+
+  // Sync DB game state — mark round as inactive
+  try {
+    await gameService.endRound();
+  } catch (error) {
+    logger.error('Failed to sync DB round end state:', error);
+  }
+
   try {
     logger.info('Updating Stocks...');
     await updateStocks(gameState);
@@ -83,7 +109,7 @@ async function endRound() {
     logger.info('Game Ready for Next Round');
     
     // Recursive loop to start next round
-    startRound();
+    await startRound();
   } catch (error) {
     logger.error('Failed to update: ', error);
   }
@@ -97,6 +123,7 @@ function endGame() {
 
 export function terminateGame() {
   clearTimeout(timeoutId);
+  clearInterval(leaderboardInterval);
   gameState.stage = 'INVALID';
   gameState.roundNo = 0;
   gameEmitter.emit(gameOFF);

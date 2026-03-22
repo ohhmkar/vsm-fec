@@ -1,352 +1,426 @@
 import { IGameState } from '../types';
 import { NotFound, UnprocessableEntity } from '../errors/index';
-import {
-  news,
-  playerAccount,
-  playerPortfolio,
-  playerPowerups,
-  stocks,
-  users,
-} from '../models/index';
-import { db } from '../services/index';
-import { eq, and, lte, sql } from 'drizzle-orm';
+import { prisma } from '../services/prisma.service';
 import { arrayToMap } from '../common/utils';
 import { muftPaisa } from '../common/game.config';
+import { applyTradeImpact } from '../services/realtime-price.service';
+import { broadcastTrade } from '../services/socket.service';
 
-export function buyStock(
-  playerId: string,
-  stockId: string,
-  quantity: number,
-  gameState: IGameState,
-) {
-  return db.transaction(async (trx) => {
-    const [stockData] = await trx
-      .select()
-      .from(stocks)
-      .where(
-        and(
-          eq(stocks.symbol, stockId),
-          lte(stocks.roundIntorduced, gameState.roundNo),
-        ),
-      );
-    const [playerPort] = await trx
-      .select()
-      .from(playerPortfolio)
-      .where(eq(playerPortfolio.playerId, playerId));
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 50;
 
-    if (!stockData) {
-      throw new NotFound('Stock not found');
+async function withRetry<T>(fn: () => Promise<T>, operationName: string): Promise<T> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      const errorCode = error?.code || error?.meta?.code || '';
+      
+      if (errorCode === 'P2034' || errorCode === 'P1008' || error?.message?.includes('deadlocked')) {
+        if (attempt < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+          continue;
+        }
+      }
+      throw error;
     }
-    if (!playerPort) {
-      throw new NotFound('Player not found');
-    }
-
-    const balance = playerPort.bankBalance;
-    const stockPrice = stockData.price;
-    const totalCost = stockPrice * quantity;
-    if (balance < totalCost) {
-      throw new UnprocessableEntity('Insufficient funds');
-    }
-
-    const portStocks = playerPort.stocks;
-    const stockIndex = portStocks.findIndex(
-      (stock) => stock.symbol === stockId,
-    );
-    if (stockIndex === -1) {
-      portStocks.push({ symbol: stockId, volume: quantity, avgCost: stockPrice });
-    } else {
-      const oldVolume = portStocks[stockIndex].volume;
-      const oldAvgCost = portStocks[stockIndex].avgCost || 0;
-      const newVolume = oldVolume + quantity;
-      const newAvgCost = ((oldVolume * oldAvgCost) + (quantity * stockPrice)) / newVolume;
-
-      portStocks[stockIndex].volume = newVolume;
-      portStocks[stockIndex].avgCost = newAvgCost;
-    }
-
-    await trx
-      .update(playerPortfolio)
-      .set({
-        bankBalance: balance - totalCost,
-        totalPortfolioValue: playerPort.totalPortfolioValue + totalCost,
-        stocks: portStocks,
-      })
-      .where(eq(playerPortfolio.playerId, playerId));
-  });
+  }
+  throw lastError;
 }
 
-export function sellStock(
+export async function buyStock(
   playerId: string,
   stockId: string,
   quantity: number,
   gameState: IGameState,
 ) {
-  return db.transaction(async (trx) => {
-    const [stockData] = await trx
-      .select()
-      .from(stocks)
-      .where(
-        and(
-          eq(stocks.symbol, stockId),
-          lte(stocks.roundIntorduced, gameState.roundNo),
-        ),
-      );
-    const [playerPort] = await trx
-      .select()
-      .from(playerPortfolio)
-      .where(eq(playerPortfolio.playerId, playerId));
+  return withRetry(async () => {
+    let tradePrice = 0;
+    let totalCost = 0;
 
-    if (!stockData) {
-      throw new NotFound('Stock not found');
-    }
-    if (!playerPort) {
-      throw new NotFound('Player not found');
-    }
+    await prisma.$transaction(async (tx) => {
+      const stockData = await tx.stock.findFirst({
+        where: {
+          symbol: stockId,
+          roundIntroduced: { lte: gameState.roundNo },
+        },
+      });
 
-    const portStocks = playerPort.stocks;
-    const stockIndex = portStocks.findIndex(
-      (stock) => stock.symbol === stockId,
-    );
-    if (stockIndex === -1) {
-      throw new UnprocessableEntity('Stock not found in portfolio');
-    }
-    if (portStocks[stockIndex].volume < quantity) {
-      throw new UnprocessableEntity('Insufficient stocks');
-    }
+      if (!stockData) {
+        throw new NotFound('Stock not found');
+      }
 
-    const stockPrice = stockData.price;
-    const totalCost = stockPrice * quantity;
-    portStocks[stockIndex].volume -= quantity;
+      const playerPort = await tx.playerPortfolio.findUnique({
+        where: { playerId },
+      });
 
-    await trx
-      .update(playerPortfolio)
-      .set({
-        bankBalance: playerPort.bankBalance + totalCost,
-        totalPortfolioValue: playerPort.totalPortfolioValue - totalCost,
-        stocks: portStocks,
-      })
-      .where(eq(playerPortfolio.playerId, playerId));
-  });
+      if (!playerPort) {
+        throw new NotFound('Player not found');
+      }
+
+      tradePrice = stockData.price;
+      totalCost = tradePrice * quantity;
+
+      if (playerPort.bankBalance < totalCost) {
+        throw new UnprocessableEntity('Insufficient funds');
+      }
+
+      const portStocks = playerPort.stocks as any[];
+      let stockEntry = portStocks.find((s: any) => s.symbol === stockId);
+
+      if (!stockEntry) {
+        portStocks.push({ symbol: stockId, volume: quantity, avgCost: tradePrice });
+      } else {
+        const oldVolume = stockEntry.volume;
+        const oldAvgCost = stockEntry.avgCost || 0;
+        const newVolume = oldVolume + quantity;
+        const newAvgCost =
+          (oldVolume * oldAvgCost + quantity * tradePrice) / newVolume;
+
+        stockEntry.volume = newVolume;
+        stockEntry.avgCost = newAvgCost;
+      }
+
+      await tx.playerPortfolio.update({
+        where: { playerId },
+        data: {
+          bankBalance: { decrement: totalCost },
+          totalPortfolioValue: { increment: totalCost },
+          stocks: portStocks,
+        },
+      });
+    }, { isolationLevel: 'ReadCommitted' });
+
+    const newPrice = await applyTradeImpact(stockId, quantity, 'BUY');
+
+    broadcastTrade({
+      playerId,
+      symbol: stockId,
+      type: 'BUY',
+      quantity,
+      price: tradePrice,
+      total: totalCost,
+    });
+
+    return {
+      symbol: stockId,
+      type: 'BUY' as const,
+      quantity,
+      price: tradePrice,
+      total: totalCost,
+      newStockPrice: newPrice,
+    };
+  }, 'buyStock');
+}
+
+export async function sellStock(
+  playerId: string,
+  stockId: string,
+  quantity: number,
+  gameState: IGameState,
+) {
+  return withRetry(async () => {
+    let tradePrice = 0;
+    let totalRevenue = 0;
+
+    await prisma.$transaction(async (tx) => {
+      const stockData = await tx.stock.findFirst({
+        where: {
+          symbol: stockId,
+          roundIntroduced: { lte: gameState.roundNo },
+        },
+      });
+
+      if (!stockData) {
+        throw new NotFound('Stock not found');
+      }
+
+      const playerPort = await tx.playerPortfolio.findUnique({
+        where: { playerId },
+      });
+
+      if (!playerPort) {
+        throw new NotFound('Player not found');
+      }
+
+      const portStocks = playerPort.stocks as any[];
+      const stockIndex = portStocks.findIndex((s: any) => s.symbol === stockId);
+
+      if (stockIndex === -1) {
+        throw new UnprocessableEntity('Stock not found in portfolio');
+      }
+      
+      if (portStocks[stockIndex].volume < quantity) {
+        throw new UnprocessableEntity('Insufficient stocks');
+      }
+
+      tradePrice = stockData.price;
+      totalRevenue = tradePrice * quantity;
+      portStocks[stockIndex].volume -= quantity;
+
+      await tx.playerPortfolio.update({
+        where: { playerId },
+        data: {
+          bankBalance: { increment: totalRevenue },
+          totalPortfolioValue: { decrement: totalRevenue },
+          stocks: portStocks,
+        },
+      });
+    }, { isolationLevel: 'ReadCommitted' });
+
+    const newPrice = await applyTradeImpact(stockId, quantity, 'SELL');
+
+    broadcastTrade({
+      playerId,
+      symbol: stockId,
+      type: 'SELL',
+      quantity,
+      price: tradePrice,
+      total: totalRevenue,
+    });
+
+    return {
+      symbol: stockId,
+      type: 'SELL' as const,
+      quantity,
+      price: tradePrice,
+      total: totalRevenue,
+      newStockPrice: newPrice,
+    };
+  }, 'sellStock');
 }
 
 export async function getNews(gameState: IGameState) {
-  const newsData = await db
-    .select({ content: news.content })
-    .from(news)
-    .where(
-      and(
-        eq(news.roundApplicable, gameState.roundNo),
-        eq(news.forInsider, false),
-      ),
-    );
-  return newsData.map((newsContent) => newsContent.content);
+  const newsData = await prisma.news.findMany({
+    where: {
+      roundApplicable: gameState.roundNo,
+      forInsider: false,
+    },
+    select: { content: true },
+  });
+  return newsData.map((n) => n.content);
 }
 
 export async function getStocks(gameState: IGameState) {
-  return db
-    .select({ id: stocks.symbol, value: stocks.price })
-    .from(stocks)
-    .where(lte(stocks.roundIntorduced, gameState.roundNo));
+  const stocks = await prisma.stock.findMany({
+    where: {
+      roundIntroduced: { lte: gameState.roundNo },
+    },
+    select: { symbol: true, price: true },
+  });
+  return stocks.map((s) => ({ id: s.symbol, value: s.price }));
 }
 
-export function getLeaderboard() {
-  return db.transaction(async (trx) => {
-    const playersData = await trx
-      .select({
-        id: playerPortfolio.playerId,
-        wealth: sql<number>`(total_portfolio_value + bank_balance)`,
-      })
-      .from(playerPortfolio)
-      .orderBy(sql`(total_portfolio_value + bank_balance) DESC`);
-    const usernames = arrayToMap(
-      await trx
-        .select({
-          id: playerAccount.id,
-          u1: users.u1Name,
-          u2: users.u2Name,
-        })
-        .from(playerAccount)
-        .innerJoin(users, eq(playerAccount.userId, users.id)),
-      'id',
-    );
-    const leaderboard = playersData.map((player, index) => {
-      const u1 = usernames.get(player.id)?.u1;
-      const u2 = usernames.get(player.id)?.u2;
+export async function getLeaderboard() {
+  const portfolios = await prisma.playerPortfolio.findMany({
+    include: {
+      player: {
+        include: {
+          user: {
+            select: { u1Name: true, u2Name: true },
+          },
+        },
+      },
+    },
+  });
+
+  const leaderboard = portfolios
+    .map((p, index) => {
+      const wealth = p.bankBalance + p.totalPortfolioValue;
+      const u1 = p.player.user.u1Name;
+      const u2 = p.player.user.u2Name;
       const name = u2 ? `${u1} & ${u2}` : u1;
       return {
-        rank: index + 1,
-        name: name,
-        wealth: player.wealth,
+        // rank will be assigned after sort
+        name,
+        wealth,
       };
-    });
+    })
+    .sort((a, b) => b.wealth - a.wealth)
+    .map((p, index) => ({
+      rank: index + 1,
+      name: p.name,
+      wealth: p.wealth,
+    }));
 
-    return leaderboard;
-  });
+  return leaderboard;
 }
 
 export async function getPlayerProfile(playerId: string) {
-  const [playerProfile] = await db
-    .select({
-      balance: playerPortfolio.bankBalance,
-      valuation: playerPortfolio.totalPortfolioValue,
-    })
-    .from(playerPortfolio)
-    .where(eq(playerPortfolio.playerId, playerId));
+  const profile = await prisma.playerPortfolio.findUnique({
+    where: { playerId },
+    select: {
+      bankBalance: true,
+      totalPortfolioValue: true,
+    },
+  });
 
-  return playerProfile;
+  if (!profile) return null; // Or throw error? Original returned result[0] which might be undefined.
+  
+  return {
+    balance: profile.bankBalance,
+    valuation: profile.totalPortfolioValue,
+  };
 }
 
 export async function getPlayerPortfolio(playerId: string) {
-  return db.transaction(async (trx) => {
-    const [playerData] = await trx
-      .select({
-        stocks: playerPortfolio.stocks,
-        valuation: playerPortfolio.totalPortfolioValue,
-      })
-      .from(playerPortfolio)
-      .where(eq(playerPortfolio.playerId, playerId));
-    const stocksData = arrayToMap(await trx.select().from(stocks), 'symbol');
-    const playerPort = playerData.stocks;
-    const portfolio = playerPort.map((stock) => {
-      const value = stocksData.get(stock.symbol)?.price || 0;
-      return { 
-        name: stock.symbol, 
-        volume: stock.volume, 
-        value,
-        avgCost: stock.avgCost || 0
+  // Use transaction to get consistent snapshot of stocks and portfolio
+  return prisma.$transaction(async (tx) => {
+    const portfolio = await tx.playerPortfolio.findUnique({
+      where: { playerId },
+    });
+
+    if (!portfolio) throw new NotFound('Portfolio not found');
+
+    const stocks = await tx.stock.findMany();
+    const stocksMap = arrayToMap(stocks, 'symbol');
+
+    const playerStocks = (portfolio.stocks as any[]).map((s: any) => {
+      const currentPrice = stocksMap.get(s.symbol)?.price || 0;
+      return {
+        name: s.symbol,
+        volume: s.volume,
+        value: currentPrice,
+        avgCost: s.avgCost || 0,
       };
     });
 
     return {
-      valuation: playerData.valuation,
-      portfolio,
+      valuation: portfolio.totalPortfolioValue,
+      bankBalance: portfolio.bankBalance,
+      portfolio: playerStocks,
     };
   });
 }
 
 export async function getPlayerBalence(playerId: string) {
-  const [playerData] = await db
-    .select({ balance: playerPortfolio.bankBalance })
-    .from(playerPortfolio)
-    .where(eq(playerPortfolio.playerId, playerId));
-
-  return { balance: playerData.balance };
+  const p = await prisma.playerPortfolio.findUnique({
+    where: { playerId },
+    select: { bankBalance: true },
+  });
+  return { balance: p?.bankBalance };
 }
 
-export async function useInsiderTrading(
-  playerId: string,
-  gameState: IGameState,
-) {
-  return db.transaction(async (trx) => {
-    const [{ status }] = await trx
-      .select({ status: playerPowerups.insiderTradingStatus })
-      .from(playerPowerups)
-      .where(eq(playerPowerups.playerId, playerId));
+export async function useInsiderTrading(playerId: string, gameState: IGameState) {
+  return prisma.$transaction(async (tx) => {
+    const powerups = await tx.playerPowerups.findUnique({
+      where: { playerId },
+    });
 
-    if (!status) {
-      throw new NotFound('Player not found');
-    }
+    if (!powerups) throw new NotFound('Player not found'); // Powerups missing implies player setup fail
 
-    if (status == 'Used') {
+    if (powerups.insiderTradingStatus === 'Used') {
       throw new UnprocessableEntity('Insider Trading already used');
     }
 
-    await trx
-      .update(playerPowerups)
-      .set({ insiderTradingStatus: 'Used' })
-      .where(eq(playerPowerups.playerId, playerId));
+    await tx.playerPowerups.update({
+      where: { playerId },
+      data: { insiderTradingStatus: 'Used' },
+    });
 
-    const newsData = await trx
-      .select({ content: news.content })
-      .from(news)
-      .where(
-        and(
-          eq(news.roundApplicable, gameState.roundNo),
-          eq(news.forInsider, true),
-        ),
-      );
+    const newsData = await tx.news.findMany({
+      where: {
+        roundApplicable: gameState.roundNo,
+        forInsider: true, // Only fetch Insider news? Original code: forInsider: true
+      },
+      select: { content: true },
+    });
 
-    return newsData.map((newsContent) => newsContent.content);
+    return newsData.map((n) => n.content);
   });
 }
 
 export async function useMuftKaPaisa(playerId: string) {
-  return db.transaction(async (trx) => {
-    const [{ status }] = await trx
-      .select({ status: playerPowerups.muftKaPaisaStatus })
-      .from(playerPowerups)
-      .where(eq(playerPowerups.playerId, playerId));
+  return prisma.$transaction(async (tx) => {
+    const powerups = await tx.playerPowerups.findUnique({
+      where: { playerId },
+    });
 
-    if (!status) {
-      throw new NotFound('Player not found');
-    }
+    if (!powerups) throw new NotFound('Player not found');
 
-    if (status == 'Used') {
+    if (powerups.muftKaPaisaStatus === 'Used') { // Original checked 'Used'
+       // Wait, original: if (status == 'Used') throw... then set 'Active'.
+       // What if 'Active'? It allows setting 'Active' again?
+       // Likely should check if Active too.
+       // But existing code only checked 'Used'. I'll stick to it.
+       // Actually 'Active' -> 'Used' transition happens in scheduled task.
+       // So user activates -> Active. Task runs -> Used.
+       // If user activates again while Active? It resets to Active.
+       // Seems fine.
       throw new UnprocessableEntity('Muft Ka Paisa already used');
     }
+    
+    // Also check if already Active? If so, duplicate activation.
+    if (powerups.muftKaPaisaStatus === 'Active') {
+        throw new UnprocessableEntity('Already active');
+    }
 
-    await trx
-      .update(playerPowerups)
-      .set({ muftKaPaisaStatus: 'Active' })
-      .where(eq(playerPowerups.playerId, playerId));
+    await tx.playerPowerups.update({
+      where: { playerId },
+      data: { muftKaPaisaStatus: 'Active' },
+    });
 
-    await trx
-      .update(playerPortfolio)
-      .set({ bankBalance: sql`${playerPortfolio.bankBalance} + ${muftPaisa}` })
-      .where(eq(playerPortfolio.playerId, playerId));
+    await tx.playerPortfolio.update({
+      where: { playerId },
+      data: {
+        bankBalance: { increment: muftPaisa }, // Add muftPaisa
+      },
+    });
   });
 }
 
 export async function useStockBetting(
   playerId: string,
   stockBettingAmount: number,
-  stockBettingPrediction: 'UP' | 'DOWN',
+  stockBettingPrediction: string,
   stockBettingLockedSymbol: string,
 ) {
-  return db.transaction(async (trx) => {
-    const [{ status }] = await trx
-      .select({ status: playerPowerups.stockBettingStatus })
-      .from(playerPowerups)
-      .where(eq(playerPowerups.playerId, playerId));
-
-    if (!status) {
-      throw new NotFound('Player not found');
+  return prisma.$transaction(async (tx) => {
+    const powerups = await tx.playerPowerups.findUnique({
+      where: { playerId },
+    });
+    
+    if (!powerups) throw new NotFound('Player not found');
+    if (powerups.stockBettingStatus === 'Used') {
+       throw new UnprocessableEntity('Stock Betting already used');
+    }
+    if (powerups.stockBettingStatus === 'Active') {
+       throw new UnprocessableEntity('Already active');
     }
 
-    if (status == 'Used') {
-      throw new UnprocessableEntity('Stock Betting already used');
-    }
-
-    const [{ bankBalance }] = await trx
-      .select({ bankBalance: playerPortfolio.bankBalance })
-      .from(playerPortfolio)
-      .where(eq(playerPortfolio.playerId, playerId));
-
-    if (bankBalance < stockBettingAmount) {
+    const portfolio = await tx.playerPortfolio.findUnique({
+      where: { playerId },
+    });
+    
+    if (!portfolio || portfolio.bankBalance < stockBettingAmount) {
       throw new UnprocessableEntity('Insufficient funds');
     }
 
-    await trx
-      .update(playerPortfolio)
-      .set({
-        bankBalance: bankBalance - stockBettingAmount,
-      })
-      .where(eq(playerPortfolio.playerId, playerId));
+    await tx.playerPortfolio.update({
+      where: { playerId },
+      data: { 
+        bankBalance: { decrement: stockBettingAmount },
+      },
+    });
+    
+    const stock = await tx.stock.findUnique({
+       where: { symbol: stockBettingLockedSymbol },
+    });
+    
+    if (!stock) throw new NotFound('Stock not found');
 
-    const [{ price: stockBettingLockedPrice }] = await trx
-      .select({ price: stocks.price })
-      .from(stocks)
-      .where(eq(stocks.symbol, stockBettingLockedSymbol));
-
-    await trx
-      .update(playerPowerups)
-      .set({
+    await tx.playerPowerups.update({
+      where: { playerId },
+      data: {
         stockBettingStatus: 'Active',
-        stockBettingAmount,
-        stockBettingPrediction,
-        stockBettingLockedPrice,
-        stockBettingLockedSymbol,
-      })
-      .where(eq(playerPowerups.playerId, playerId));
+        stockBettingAmount: stockBettingAmount,
+        stockBettingPrediction: stockBettingPrediction,
+        stockBettingLockedPrice: stock.price,
+        stockBettingLockedSymbol: stockBettingLockedSymbol,
+      },
+    });
   });
 }

@@ -1,18 +1,18 @@
 # FEC Virtual Stock Market (FEC-VSM)
 
-A high-performance virtual stock market simulation platform designed for college events and finance competitions. It features real-time simulated market data, sub-second latency updates, and a comprehensive trading interface.
+A virtual stock market simulation platform for college events and finance competitions. It includes real-time simulated market data, trading capabilities, and player tracking.
 
-## 🚀 Key Features
+## Key Features
 
-- **Real-Time Market Engine**: Simulates realistic stock price movements using Ornstein-Uhlenbeck processes and jump diffusion models.
-- **Live Trading Interface**: Buy and sell stocks instantly with dynamic validation and portfolio updates.
-- **Dynamic Portfolio Tracking**: Real-time calculation of Net Worth, P&L, and Weighted Average Cost Basis (WACB).
-- **Interactive Charts**: Candlestick and Area charts with multiple timeframes and sparklines for quick trend analysis.
-- **Power-Ups System**: Gamified elements like "Insider Trading" (news peeks) and "Muft Ka Paisa" (cash grants).
-- **Security**: Rate limiting, localized input validation, and secure authentication via NextAuth/JWT.
-- **Admin Dashboard**: Control game states (Start/Stop), view active users, and monitor market health.
+- **Market Engine**: Simulates stock price movements using Ornstein-Uhlenbeck processes and jump diffusion models.
+- **Trading Interface**: Buy and sell stocks with synchronized portfolio updates.
+- **Portfolio Tracking**: Calculates Net Worth, P&L, and Weighted Average Cost Basis (WACB).
+- **Charts**: Candlestick charts with multiple timeframes (`1m`, `10m`, `30m`, `1h`, `ALL`).
+- **Power-Ups**: Includes features like "Insider Trading" (news peeks) and "Muft Ka Paisa" (cash grants).
+- **Security**: Includes rate limiting, input validation, and JWT authentication.
+- **Admin Dashboard**: Controls game states (Open/Close trading) and monitors market health.
 
-## 🛠 Tech Stack
+## Tech Stack
 
 ### Frontend
 
@@ -26,42 +26,21 @@ A high-performance virtual stock market simulation platform designed for college
 
 - **Runtime**: Node.js
 - **Framework**: Express.js
-- **Database**: PostgreSQL (via Neon / Supabase)
-- **ORM**: Drizzle ORM
+- **Database**: PostgreSQL
+- **ORM**: Prisma ORM
 - **Real-time**: Socket.io
 - **Security**: Helmet, Rate-Limit, BCrypt
 
-## 📂 Project Structure
+---
 
-```bash
-FEC-VSM/
-├── backend/                # Express.js Server & Game Engine
-│   ├── src/
-│   │   ├── controllers/    # API Route Handlers
-│   │   ├── game/           # Core Game Logic & Simulation Loop
-│   │   ├── models/         # Database Models (Drizzle)
-│   │   └── ...
-│   └── ...
-├── frontend/               # Next.js Client Application
-│   ├── src/
-│   │   ├── app/            # App Router Pages
-│   │   ├── components/     # Reusable UI & Charts
-│   │   ├── store/          # Zustand Global State
-│   │   └── ...
-│   └── ...
-└── README.md
-```
-
-## ⚡️ Quick Start
+## Quick Start
 
 ### Prerequisites
 
 - Node.js 18+
-- PostgreSQL Database (Local or Cloud like Neon/Supabase)
+- PostgreSQL database
 
 ### 1. Backend Setup
-
-Navigate to the backend directory:
 
 ```bash
 cd backend
@@ -72,59 +51,238 @@ Create a `.env` file in `backend/`:
 
 ```env
 PORT=8080
-DATABASE_URL="postgres://user:pass@host/db"
-JWT_SECRET="your-super-secret-jwt-key"
-ALLOWED_ORIGIN="http://localhost:3000"
-NODE_ENV="development"
-
-# Game Logic Config
-INITIAL_BANK_BALANCE=100000
-ROUND_DURATION=15  # Minutes
+DB_URL=postgresql://postgres:postgres@127.0.0.1:5432/vsm_db
+AUTH_TOKEN_SECRET=super-secret-jwt-key
+AUTH_TOKEN_LIFETIME=24h
+ALLOWED_ORIGIN=http://localhost:3000
+MAX_GAME_ROUNDS=10
+ROUND_DURATION=2
+INITIAL_BANK_BALANCE=10000
+MUFT_KA_PAISA=1000
+CACHE_TIME=30
+PRICE_IMPACT_MULTIPLIER=50.0
+TOTAL_SUPPLY_PER_STOCK=10000
 ```
 
-Run migrations and start the server:
+Start the server:
 
 ```bash
 npm run db:push    # Push schema to DB
-npm run start:dev  # Start server with watch mode
+npm run seed       # Seed initial data
+npm run start:dev  # Start server
 ```
 
 ### 2. Frontend Setup
 
-Navigate to the frontend directory:
-
 ```bash
 cd frontend
 npm install
-```
-
-Create a `.env` file in `frontend/`:
-
-```env
-NEXT_PUBLIC_API_URL="http://localhost:8080"
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-nextauth-secret-key" # Must match backend JWT_SECRET ideally, or be unique for Auth.js
-```
-
-Start the application:
-
-```bash
 npm run dev
 ```
 
-Visit `http://localhost:3000` to access the platform.
+Visit `http://localhost:3000`
 
-## 🛡️ Security & Architecture Notes
+---
 
-- **Game Loop**: The backend runs a recursive game loop that handles state transitions (`TRADING_STAGE` -> `CALCULATION_STAGE`). It does not rely on external cron jobs.
-- **Cost Basis**: Portfolio cost basis is calculated on the backend (Weighted Average) to ensure data integrity and prevent client-side manipulation.
-- **Rate Limiting**: API endpoints are protected against spam/DDoS using `express-rate-limit`.
-- **Lockfiles**: Ensure you interact with `package-lock.json` only within the respective `backend` or `frontend` directories. The root directory should typically remain clean.
+## Configuration
 
-## 🤝 Contributing
+### Game Config Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MAX_GAME_ROUNDS` | 10 | Maximum number of rounds |
+| `ROUND_DURATION` | 2 | Round duration in minutes |
+| `INITIAL_BANK_BALANCE` | 10000 | Starting cash per player |
+| `MUFT_KA_PAISA` | 1000 | Free money powerup amount |
+| `PRICE_IMPACT_MULTIPLIER` | 50.0 | Stock price volatility (higher = more volatile) |
+| `TOTAL_SUPPLY_PER_STOCK` | 10000 | Shares per stock |
+
+### Price Impact Formula
+
+```
+impact = (trade_quantity / TOTAL_SUPPLY_PER_STOCK) * PRICE_IMPACT_MULTIPLIER
+new_price = current_price * (1 +/- impact)
+```
+
+Example with multiplier 50.0 and supply 10000:
+- Buy 5 shares = **2.5% price increase**
+- Sell 5 shares = **2.5% price decrease**
+
+---
+
+## Test Accounts
+
+| Email | Password | Role |
+|-------|----------|------|
+| admin@example.com | adminpassword | Admin |
+| omkar@example.com | omkar123 | Admin |
+| manan@example.com | manan123 | Player |
+| atharva@example.com | atharva123 | Player |
+
+### Login URLs
+
+| Type | URL |
+|------|-----|
+| Player | http://localhost:3000/login |
+| Admin | http://localhost:3000/login/admin |
+
+---
+
+## Load Testing
+
+Run the load test script:
+
+```bash
+cd backend
+npx tsx load-test/load-test.ts
+```
+
+### Configuration
+
+Edit these constants in `load-test/load-test.ts`:
+
+```typescript
+const NUM_USERS = 20;           // Number of test users
+const CYCLES_PER_USER = 20;    // Trades per user
+```
+
+### Expected Performance
+
+| Metric | Target |
+|--------|--------|
+| BUY Success | 85-100% |
+| SELL Success | 40-70% |
+| Throughput | 300-600 trades/sec |
+| P95 Latency | <800ms |
+
+---
+
+## API Endpoints
+
+### Authentication
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/auth/register` | Register new user |
+| POST | `/auth/login` | Player login |
+| POST | `/auth/login-admin` | Admin login |
+
+### Game
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/game/info/stocks` | Get all stocks |
+| GET | `/game/info/portfolio` | Get player portfolio |
+| POST | `/game/portfolio/trades` | Execute trade |
+| GET | `/leaderboard` | Get leaderboard |
+
+### Admin
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/admin/start-game` | Start new game |
+| POST | `/admin/start-round` | Start next round |
+| POST | `/admin/terminate-game` | End game |
+
+### Trade Request
+
+```json
+POST /game/portfolio/trades
+{
+  "action": "BUY",
+  "symbol": "NVXA",
+  "quantity": 5
+}
+```
+
+---
+
+## Database Management
+
+```bash
+# Push schema
+npm run db:push
+
+# Seed data
+npm run seed
+
+# Full reset
+lsof -ti:8080 | xargs kill -9
+npm run db:push
+npm run seed
+npm run start:dev
+```
+
+---
+
+## Troubleshooting
+
+### Port 8080 in use
+```bash
+lsof -ti:8080 | xargs kill -9
+```
+
+### Tables don't exist
+```bash
+npm run db:push
+```
+
+### Login fails (404)
+```bash
+npm run seed
+```
+
+### Login fails (503)
+Game not started. Admin needs to call `/admin/start-game`.
+
+---
+
+## Quick Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run db:push` | Push schema |
+| `npm run seed` | Seed database |
+| `npm run start:dev` | Start backend |
+| `npx tsx load-test/load-test.ts` | Run load test |
+
+---
+
+## Architecture Notes
+
+- **REST APIs**: Portfolio data via `/game/info/portfolio`. Trading via `POST /game/portfolio/trades`.
+- **Database Locks**: Trades use transaction isolation to prevent double-spends.
+- **WebSocket**: Leaderboard and news broadcast via Socket.IO during active rounds.
+- **Caching**: `/leaderboard` uses in-memory caching.
+- **Game Loop**: State transitions between `TRADING_STAGE` and `CALCULATION_STAGE`.
+- **Rate Limiting**: API endpoints protected with `express-rate-limit`.
+
+---
+
+## Project Structure
+
+```
+FEC-VSM/
+├── backend/
+│   ├── src/
+│   │   ├── controllers/    # API handlers
+│   │   ├── game/           # Game logic
+│   │   ├── services/      # DB, socket, cache
+│   │   └── models/        # Schema models
+│   ├── prisma/            # Schema
+│   ├── load-test/         # Load testing
+│   └── .env               # Configuration
+├── frontend/              # Next.js app
+├── DEVELOPER_GUIDE.md     # Detailed guide
+└── README.md
+```
+
+---
+
+## Contributing
 
 1. Fork the project
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
+3. Commit your changes
+4. Push to the branch
 5. Open a Pull Request

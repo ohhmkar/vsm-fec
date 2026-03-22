@@ -5,6 +5,7 @@ import {
   addNewsRequestDtoSchema,
   addStockRequestDtoSchema,
   addStockUpdateDataDtoSchema,
+  notifyRequestDtoSchema,
 } from './admin.controller.dto';
 import {
   addNews,
@@ -17,6 +18,7 @@ import {
   flushPlayerTableHandler,
   flushUserTableHandler,
   getAdminPlayersHandler,
+  sendNotificationHandler,
 } from './admin.controller';
 
 export const adminRouter = Router();
@@ -44,3 +46,4 @@ adminRouter.post('/flush-database', flushDatabaseHandler);
 adminRouter.post('/flush-player-table', flushPlayerTableHandler);
 adminRouter.post('/flush-user-table', flushUserTableHandler);
 adminRouter.get('/players', getAdminPlayersHandler);
+adminRouter.post('/notify', validatorFactory(notifyRequestDtoSchema), sendNotificationHandler);

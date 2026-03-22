@@ -20,6 +20,7 @@ import { adminRouter } from './controllers/admin/admin.router';
 
 import { registerGameGateway, startGame, startRound } from './game/game';
 import { allowedOrigin, port } from './common/app.config';
+import { setIO } from './services/socket.service';
 
 const app = express();
 const httpServer = createServer(app);
@@ -31,8 +32,10 @@ const limiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
-// Apply rate limiter to all requests
-app.use(limiter);
+// Apply rate limiter only in production (dev mode needs unrestricted access for load testing)
+if (process.env.NODE_ENV === 'production') {
+  app.use(limiter);
+}
 
 const io = new Server(httpServer, {
   cors: {
@@ -65,6 +68,7 @@ io.engine.use(logger);
 io.engine.use(helmet());
 io.use(authenticateSocketConnection);
 
+setIO(io);
 registerGameGateway(io);
 
 httpServer.listen(port, () => {

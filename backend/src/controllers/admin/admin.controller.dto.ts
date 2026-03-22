@@ -32,3 +32,10 @@ export const addStockUpdateDataDtoSchema = z.array(
 export type IAddStockUpdateDataDto = z.infer<
   typeof addStockUpdateDataDtoSchema
 >;
+
+export const notifyRequestDtoSchema = z.object({
+  message: z.string().min(1, 'Message cannot be empty'),
+  type: z.enum(['info', 'success', 'warning', 'error']).optional(),
+});
+
+export type INotifyRequestDto = z.infer<typeof notifyRequestDtoSchema>;

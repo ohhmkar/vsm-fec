@@ -47,13 +47,18 @@ export default function LeaderboardPage() {
     fetchLeaderboard();
   }, [user]);
 
-  // Refetch when a round ends (calculation stage)
+  // Refetch when a round ends, and listen for live updates
   useEffect(() => {
     if (!socket) return;
     const handleRecalc = () => fetchLeaderboard();
+    const handleLiveUpdate = (data: LeaderboardEntry[]) => setLeaderboard(data);
+    
     socket.on('game:stage:CALCULATION_STAGE', handleRecalc);
+    socket.on('leaderboard:update', handleLiveUpdate);
+    
     return () => {
       socket.off('game:stage:CALCULATION_STAGE', handleRecalc);
+      socket.off('leaderboard:update', handleLiveUpdate);
     };
   }, [socket]);
 
