@@ -15,6 +15,7 @@ A high-performance virtual stock market simulation platform designed for college
 ## 🛠 Tech Stack
 
 ### Frontend
+
 - **Framework**: Next.js 16 (App Router) with Turbopack
 - **Styling**: Tailwind CSS, Framer Motion
 - **State Management**: Zustand (Persisted Store)
@@ -22,6 +23,7 @@ A high-performance virtual stock market simulation platform designed for college
 - **Network**: Socket.io-client
 
 ### Backend
+
 - **Runtime**: Node.js
 - **Framework**: Express.js
 - **Database**: PostgreSQL (via Neon / Supabase)
@@ -53,18 +55,21 @@ FEC-VSM/
 ## ⚡️ Quick Start
 
 ### Prerequisites
+
 - Node.js 18+
 - PostgreSQL Database (Local or Cloud like Neon/Supabase)
 
 ### 1. Backend Setup
 
 Navigate to the backend directory:
+
 ```bash
 cd backend
 npm install
 ```
 
 Create a `.env` file in `backend/`:
+
 ```env
 PORT=8080
 DATABASE_URL="postgres://user:pass@host/db"
@@ -78,6 +83,7 @@ ROUND_DURATION=15  # Minutes
 ```
 
 Run migrations and start the server:
+
 ```bash
 npm run db:push    # Push schema to DB
 npm run start:dev  # Start server with watch mode
@@ -86,12 +92,14 @@ npm run start:dev  # Start server with watch mode
 ### 2. Frontend Setup
 
 Navigate to the frontend directory:
+
 ```bash
 cd frontend
 npm install
 ```
 
 Create a `.env` file in `frontend/`:
+
 ```env
 NEXT_PUBLIC_API_URL="http://localhost:8080"
 NEXTAUTH_URL="http://localhost:3000"
@@ -99,6 +107,7 @@ NEXTAUTH_SECRET="your-nextauth-secret-key" # Must match backend JWT_SECRET ideal
 ```
 
 Start the application:
+
 ```bash
 npm run dev
 ```
@@ -106,12 +115,14 @@ npm run dev
 Visit `http://localhost:3000` to access the platform.
 
 ## 🛡️ Security & Architecture Notes
+
 - **Game Loop**: The backend runs a recursive game loop that handles state transitions (`TRADING_STAGE` -> `CALCULATION_STAGE`). It does not rely on external cron jobs.
 - **Cost Basis**: Portfolio cost basis is calculated on the backend (Weighted Average) to ensure data integrity and prevent client-side manipulation.
 - **Rate Limiting**: API endpoints are protected against spam/DDoS using `express-rate-limit`.
 - **Lockfiles**: Ensure you interact with `package-lock.json` only within the respective `backend` or `frontend` directories. The root directory should typically remain clean.
 
 ## 🤝 Contributing
+
 1. Fork the project
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)

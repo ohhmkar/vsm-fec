@@ -14,17 +14,21 @@ The user-facing dashboard for the FEC Virtual Stock Market, built with Next.js 1
 ## 🚀 Getting Started
 
 ### Install Dependencies
+
 ```bash
 npm install
 ```
 
 ### Development Server
+
 ```bash
 npm run dev
 ```
+
 Runs on [http://localhost:3000](http://localhost:3000).
 
 ### Environment Variables (.env)
+
 Create a `.env` file in this directory:
 
 ```env
@@ -47,6 +51,7 @@ NEXTAUTH_SECRET="your-secret-key"           # Secure random string
 ## 🔄 State Management
 
 We use **Zustand** to handle application state:
+
 - **`marketStore`**: Handles the list of stocks, real-time price updates, and socket connections.
 - **`portfolioStore`**: Manages the user's cash, holdings, and transaction history.
 - **`authStore`**: Manages user session and authentication status.
@@ -54,6 +59,7 @@ We use **Zustand** to handle application state:
 ## 🎨 Styling
 
 Global styles are defined in `src/app/globals.css`. We use a custom dark theme with specific CSS variables:
+
 - `--bg-base`: Deep midnight background.
 - `--accent-green`: Success/Profit indicator.
 - `--accent-red`: Loss/Danger indicator.
