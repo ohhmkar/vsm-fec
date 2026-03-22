@@ -12,6 +12,9 @@ export const buyStockHandler: BuySellHandler = async function (req, res) {
   if (!stockId || !quantity) {
     throw new BadRequest('StockId or Quantity not Provided');
   }
+  if (quantity <= 0) {
+    throw new BadRequest('Quantity must be a positive number');
+  }
   await buyStock(req.player.playerId, stockId, quantity, getGameState());
   res.status(StatusCodes.OK).json({
     status: 'Success',
@@ -22,6 +25,9 @@ export const sellStockHandler: BuySellHandler = async function (req, res) {
   const { stock: stockId, amount: quantity } = req.body;
   if (!stockId || !quantity) {
     throw new BadRequest('StockId or Quantity not Provided');
+  }
+  if (quantity <= 0) {
+    throw new BadRequest('Quantity must be a positive number');
   }
   await sellStock(req.player.playerId, stockId, quantity, getGameState());
   res.status(StatusCodes.OK).json({

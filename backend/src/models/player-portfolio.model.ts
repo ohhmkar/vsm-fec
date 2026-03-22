@@ -11,6 +11,6 @@ export const playerPortfolio = pgTable('player_portfolio', {
   bankBalance: doublePrecision('bank_balance').notNull(),
   totalPortfolioValue: doublePrecision('total_portfolio_value').notNull(),
   stocks: json('stocks')
-    .$type<{ symbol: string; volume: number }[]>()
+    .$type<{ symbol: string; volume: number; avgCost: number }[]>()
     .notNull(),
 });

@@ -14,6 +14,7 @@ import {
   uploadStockUpdate,
 } from '../../game/helpers/chore';
 import { startGame, startRound, terminateGame } from '../../game/game';
+import { gameService } from '../../services/game.logic';
 import { db } from '../../services/index';
 import { users, playerAccount, playerPortfolio } from '../../models/index';
 import { eq } from 'drizzle-orm';
@@ -30,6 +31,7 @@ type AddStocksHandler = ReqHandler<IAddStockRequestDto>;
 
 export const addStock: AddStocksHandler = async function (req, res) {
   const stockData = req.body;
+  // Also sync with Prisma if possible or just use Drizzle helper for now
   await uploadStock(stockData);
   res.status(StatusCodes.OK).json({ status: 'Success' });
 };
@@ -47,24 +49,27 @@ export const addStockUpdateData: AddStockUpdateDataHandler = async function (
 
 type ControlEndpointHandler = ReqHandler<object>;
 
-export const startGameHandler: ControlEndpointHandler = function (req, res) {
+export const startGameHandler: ControlEndpointHandler = async function (req, res) {
+  await gameService.initializeGame();
   setTimeout(startGame, 0);
   res.status(StatusCodes.OK).json({
     status: 'Success',
   });
 };
 
-export const startRoundHandler: ControlEndpointHandler = function (req, res) {
+export const startRoundHandler: ControlEndpointHandler = async function (req, res) {
+  await gameService.startRound();
   setTimeout(startRound, 0);
   res.status(StatusCodes.OK).json({
     status: 'Success',
   });
 };
 
-export const terminateGameHandler: ControlEndpointHandler = function (
+export const terminateGameHandler: ControlEndpointHandler = async function (
   req,
   res,
 ) {
+  await gameService.endRound(); // Ensure DB state is closed
   setTimeout(terminateGame, 0);
   res.status(StatusCodes.OK).json({
     status: 'Success',

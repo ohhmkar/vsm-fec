@@ -9,31 +9,36 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "chart.js": "^4.5.1",
+    "chartjs-adapter-date-fns": "^3.0.0",
+    "chartjs-chart-financial": "^0.2.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^0.577.0",
+    "maath": "^0.10.8",
     "next": "16.2.1",
     "next-auth": "^4.24.13",
     "react": "19.2.4",
+    "react-chartjs-2": "^5.3.1",
     "react-dom": "19.2.4",
     "recharts": "^3.8.0",
     "socket.io-client": "^4.8.3",
     "tailwind-merge": "^3.5.0",
-    "zustand": "^5.0.12",
     "three": "^0.183.2",
-    "@react-three/fiber": "^9.5.0",
-    "@react-three/drei": "^10.7.7",
-    "maath": "^0.10.8"
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.183.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "@types/three": "^0.183.1"
+    "typescript": "^5"
   }
 }

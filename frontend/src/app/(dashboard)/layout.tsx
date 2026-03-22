@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Navbar } from '@/components/navbar/Navbar';
-import { NewsTicker } from '@/components/ui/NewsTicker';
-import { useAuthStore } from '@/store/authStore';
-import { useMarketStore } from '@/store/marketStore';
-import { usePortfolioStore } from '@/store/portfolioStore';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Navbar } from "@/components/navbar/Navbar";
+import { NewsTicker } from "@/components/ui/NewsTicker";
+import { useAuthStore } from "@/store/authStore";
+import { usePortfolioStore } from "@/store/portfolioStore";
+import { MarketManager } from "@/components/logic/MarketManager";
 
 export default function DashboardLayout({
   children,
@@ -15,45 +15,41 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const { stocks, initializeStocks, startSimulation, stopSimulation } = useMarketStore();
-  const { updateHoldingPrices, syncWithBackend } = usePortfolioStore();
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
+  const syncWithBackend = usePortfolioStore((s) => s.syncWithBackend);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
-    } else {
+    // Only redirect if hydration is complete and user is not authenticated
+    if (hasHydrated && !isAuthenticated) {
+      router.push("/login");
+    } else if (hasHydrated && isAuthenticated) {
       syncWithBackend();
     }
-  }, [isAuthenticated, router, syncWithBackend]);
+  }, [isAuthenticated, hasHydrated, router, syncWithBackend]);
 
-  useEffect(() => {
-    if (stocks.length === 0) {
-      initializeStocks();
-    }
-    startSimulation();
-    return () => stopSimulation();
-  }, []);
+  // While waiting for hydration, show loading or nothing.
+  // This prevents the flicker/redirect loop if store is just initializing.
+  if (!hasHydrated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[var(--bg-base)]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary)]"></div>
+      </div>
+    );
+  }
 
-  // Update portfolio holding prices whenever stocks change
-  useEffect(() => {
-    if (stocks.length > 0) {
-      const prices: Record<string, number> = {};
-      stocks.forEach((s) => {
-        prices[s.ticker] = s.price;
-      });
-      updateHoldingPrices(prices);
-    }
-  }, [stocks, updateHoldingPrices]);
-
+  // If redirecting, also return null to avoid rendering children briefly
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-[var(--bg-base)]">
+    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)]">
+      {/* Logic components that don't render UI but manage state */}
+      <MarketManager />
+
       <Navbar />
-      <NewsTicker />
-      <main className="pt-[92px] max-w-7xl mx-auto px-4 py-6">
+      <div className="pt-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6 pb-20">
+        <NewsTicker />
         {children}
-      </main>
+      </div>
     </div>
   );
 }

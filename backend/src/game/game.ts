@@ -81,6 +81,9 @@ async function endRound() {
     logger.info('Updated Player Powercard Status.');
 
     logger.info('Game Ready for Next Round');
+    
+    // Recursive loop to start next round
+    startRound();
   } catch (error) {
     logger.error('Failed to update: ', error);
   }

@@ -47,6 +47,18 @@ export const getProfileHandler: InfoEndpointHandler = async function (
   req,
   res,
 ) {
+  if (req.player.admin) {
+    res.status(StatusCodes.OK).json({
+      status: 'Success',
+      data: {
+        name: 'Administrator',
+        email: 'admin@system.local',
+        isAdmin: true,
+      },
+    });
+    return;
+  }
+  
   const playerProfile = await getPlayerProfile(req.player.playerId);
   res.status(StatusCodes.OK).json({
     status: 'Success',
@@ -58,6 +70,18 @@ export const getPortfolioHandler: InfoEndpointHandler = async function (
   req,
   res,
 ) {
+  if (req.player.admin) {
+    res.status(StatusCodes.OK).json({
+      status: 'Success',
+      data: {
+        bankBalance: 0,
+        totalPortfolioValue: 0,
+        stocks: [],
+      },
+    });
+    return;
+  }
+
   const playerData = await getPlayerPortfolio(req.player.playerId);
 
   res.status(StatusCodes.OK).json({
@@ -70,6 +94,17 @@ export const getBalenceHandler: InfoEndpointHandler = async function (
   req,
   res,
 ) {
+  if (req.player.admin) {
+    res.status(StatusCodes.OK).json({
+      status: 'Success',
+      data: {
+        bankBalance: 0,
+        totalPortfolioValue: 0,
+      },
+    });
+    return;
+  }
+
   const playerData = await getPlayerBalence(req.player.playerId);
   res.status(StatusCodes.OK).json({
     status: 'Success',

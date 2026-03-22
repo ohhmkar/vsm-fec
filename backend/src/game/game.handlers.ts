@@ -53,9 +53,15 @@ export function buyStock(
       (stock) => stock.symbol === stockId,
     );
     if (stockIndex === -1) {
-      portStocks.push({ symbol: stockId, volume: quantity });
+      portStocks.push({ symbol: stockId, volume: quantity, avgCost: stockPrice });
     } else {
-      portStocks[stockIndex].volume += quantity;
+      const oldVolume = portStocks[stockIndex].volume;
+      const oldAvgCost = portStocks[stockIndex].avgCost || 0;
+      const newVolume = oldVolume + quantity;
+      const newAvgCost = ((oldVolume * oldAvgCost) + (quantity * stockPrice)) / newVolume;
+
+      portStocks[stockIndex].volume = newVolume;
+      portStocks[stockIndex].avgCost = newAvgCost;
     }
 
     await trx
@@ -203,7 +209,12 @@ export async function getPlayerPortfolio(playerId: string) {
     const playerPort = playerData.stocks;
     const portfolio = playerPort.map((stock) => {
       const value = stocksData.get(stock.symbol)?.price || 0;
-      return { name: stock.symbol, volume: stock.volume, value };
+      return { 
+        name: stock.symbol, 
+        volume: stock.volume, 
+        value,
+        avgCost: stock.avgCost || 0
+      };
     });
 
     return {

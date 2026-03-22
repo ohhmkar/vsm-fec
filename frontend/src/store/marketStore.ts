@@ -6,7 +6,7 @@ import { Stock } from '@/types';
 import { generateAllStocks, simulatePriceTick } from '@/lib/stockEngine';
 import { useAuthStore } from './authStore';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080';
 
 interface MarketStore {
   stocks: Stock[];

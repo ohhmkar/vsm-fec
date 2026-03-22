@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useMemo } from "react";
+import { motion } from "framer-motion";
 import {
   TrendingUp,
   TrendingDown,
@@ -9,29 +9,44 @@ import {
   BarChart3,
   DollarSign,
   Zap,
-} from 'lucide-react';
-import { useMarketStore } from '@/store/marketStore';
-import { MarketIndexChart } from '@/components/charts/MarketIndexChart';
-import { ChangeIndicator } from '@/components/ui/ChangeIndicator';
-import { PageWrapper } from '@/components/ui/PageWrapper';
-import { itemVariants, listVariants } from '@/components/ui/PageWrapper';
-import { calculateIndexHistory, calculateMarketIndex, getSectors } from '@/lib/stockEngine';
-import { formatCompactCurrency, formatVolume, formatCurrency } from '@/lib/utils';
-import Link from 'next/link';
+} from "lucide-react";
+import { useMarketStore } from "@/store/marketStore";
+import { MarketIndexChart } from "@/components/charts/MarketIndexChart";
+import { ChangeIndicator } from "@/components/ui/ChangeIndicator";
+import { PageWrapper } from "@/components/ui/PageWrapper";
+import { itemVariants, listVariants } from "@/components/ui/PageWrapper";
+import {
+  calculateIndexHistory,
+  calculateMarketIndex,
+  getSectors,
+} from "@/lib/stockEngine";
+import {
+  formatCompactCurrency,
+  formatVolume,
+  formatCurrency,
+} from "@/lib/utils";
+import Link from "next/link";
 
-const TIMEFRAMES = ['1D', '1W', '1M', '3M'];
+const TIMEFRAMES = ["30M", "1H", "2H", "ALL"];
 
 export default function HomePage() {
   const stocks = useMarketStore((s) => s.stocks);
-  const [timeframe, setTimeframe] = useState('3M');
+  const [timeframe, setTimeframe] = useState("ALL");
 
   const indexHistory = useMemo(() => calculateIndexHistory(stocks), [stocks]);
   const currentIndex = useMemo(() => calculateMarketIndex(stocks), [stocks]);
-  const prevIndex = indexHistory.length >= 2 ? indexHistory[indexHistory.length - 2].value : currentIndex;
+  const prevIndex =
+    indexHistory.length >= 2
+      ? indexHistory[indexHistory.length - 2].close
+      : currentIndex;
   const indexChange = currentIndex - prevIndex;
-  const indexChangePercent = prevIndex !== 0 ? (indexChange / prevIndex) * 100 : 0;
+  const indexChangePercent =
+    prevIndex !== 0 ? (indexChange / prevIndex) * 100 : 0;
 
-  const sorted = useMemo(() => [...stocks].sort((a, b) => b.changePercent - a.changePercent), [stocks]);
+  const sorted = useMemo(
+    () => [...stocks].sort((a, b) => b.changePercent - a.changePercent),
+    [stocks],
+  );
   const topGainers = sorted.slice(0, 3);
   const topLosers = sorted.slice(-3).reverse();
 
@@ -43,9 +58,15 @@ export default function HomePage() {
 
   // Sector performance
   const sectors = useMemo(() => {
-    const sectorMap = new Map<string, { totalCap: number; weightedChange: number }>();
+    const sectorMap = new Map<
+      string,
+      { totalCap: number; weightedChange: number }
+    >();
     stocks.forEach((s) => {
-      const existing = sectorMap.get(s.sector) || { totalCap: 0, weightedChange: 0 };
+      const existing = sectorMap.get(s.sector) || {
+        totalCap: 0,
+        weightedChange: 0,
+      };
       existing.totalCap += s.marketCap;
       existing.weightedChange += s.changePercent * s.marketCap;
       sectorMap.set(s.sector, existing);
@@ -76,7 +97,9 @@ export default function HomePage() {
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
             <div>
-              <h2 className="text-sm text-[var(--text-secondary)] mb-1">FEC Market Index</h2>
+              <h2 className="text-sm text-[var(--text-secondary)] mb-1">
+                FEC Market Index
+              </h2>
               <div className="flex items-baseline gap-3">
                 <span className="text-3xl font-bold font-mono tabular-nums">
                   {currentIndex.toFixed(2)}
@@ -91,8 +114,8 @@ export default function HomePage() {
                   onClick={() => setTimeframe(tf)}
                   className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                     timeframe === tf
-                      ? 'bg-[var(--accent-blue)] text-white'
-                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                      ? "bg-[var(--accent-blue)] text-white"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   }`}
                 >
                   {tf}
@@ -113,11 +136,34 @@ export default function HomePage() {
           className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
         >
           {[
-            { label: 'Total Market Cap', value: formatCompactCurrency(totalMarketCap), icon: DollarSign },
-            { label: '24h Volume', value: formatVolume(totalVolume), icon: BarChart3 },
-            { label: 'Advancing', value: advancing.toString(), icon: TrendingUp, color: 'text-[var(--accent-green)]' },
-            { label: 'Declining', value: declining.toString(), icon: TrendingDown, color: 'text-[var(--accent-red)]' },
-            { label: 'Most Active', value: mostActive?.ticker || '—', icon: Zap, color: 'text-[var(--accent-gold)]' },
+            {
+              label: "Total Market Cap",
+              value: formatCompactCurrency(totalMarketCap),
+              icon: DollarSign,
+            },
+            {
+              label: "24h Volume",
+              value: formatVolume(totalVolume),
+              icon: BarChart3,
+            },
+            {
+              label: "Advancing",
+              value: advancing.toString(),
+              icon: TrendingUp,
+              color: "text-[var(--accent-green)]",
+            },
+            {
+              label: "Declining",
+              value: declining.toString(),
+              icon: TrendingDown,
+              color: "text-[var(--accent-red)]",
+            },
+            {
+              label: "Most Active",
+              value: mostActive?.ticker || "—",
+              icon: Zap,
+              color: "text-[var(--accent-gold)]",
+            },
           ].map((stat, i) => {
             const Icon = stat.icon;
             return (
@@ -129,10 +175,17 @@ export default function HomePage() {
                 className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg p-4"
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <Icon size={14} className={stat.color || 'text-[var(--text-dim)]'} />
-                  <span className="text-xs text-[var(--text-dim)]">{stat.label}</span>
+                  <Icon
+                    size={14}
+                    className={stat.color || "text-[var(--text-dim)]"}
+                  />
+                  <span className="text-xs text-[var(--text-dim)]">
+                    {stat.label}
+                  </span>
                 </div>
-                <p className={`text-lg font-semibold font-mono tabular-nums ${stat.color || ''}`}>
+                <p
+                  className={`text-lg font-semibold font-mono tabular-nums ${stat.color || ""}`}
+                >
                   {stat.value}
                 </p>
               </motion.div>
@@ -153,7 +206,12 @@ export default function HomePage() {
               <TrendingUp size={16} />
               Top Gainers
             </h3>
-            <motion.div variants={listVariants} initial="hidden" animate="show" className="space-y-3">
+            <motion.div
+              variants={listVariants}
+              initial="hidden"
+              animate="show"
+              className="space-y-3"
+            >
               {topGainers.map((stock) => (
                 <motion.div key={stock.ticker} variants={itemVariants}>
                   <Link
@@ -161,12 +219,22 @@ export default function HomePage() {
                     className="flex items-center justify-between p-3 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors group"
                   >
                     <div>
-                      <span className="font-mono font-semibold text-sm">{stock.ticker}</span>
-                      <span className="text-xs text-[var(--text-dim)] ml-2">{stock.name}</span>
+                      <span className="font-mono font-semibold text-sm">
+                        {stock.ticker}
+                      </span>
+                      <span className="text-xs text-[var(--text-dim)] ml-2">
+                        {stock.name}
+                      </span>
                     </div>
                     <div className="text-right">
-                      <div className="font-mono tabular-nums text-sm">{formatCurrency(stock.price)}</div>
-                      <ChangeIndicator value={stock.changePercent} size="sm" showIcon={false} />
+                      <div className="font-mono tabular-nums text-sm">
+                        {formatCurrency(stock.price)}
+                      </div>
+                      <ChangeIndicator
+                        value={stock.changePercent}
+                        size="sm"
+                        showIcon={false}
+                      />
                     </div>
                   </Link>
                 </motion.div>
@@ -185,7 +253,12 @@ export default function HomePage() {
               <TrendingDown size={16} />
               Top Losers
             </h3>
-            <motion.div variants={listVariants} initial="hidden" animate="show" className="space-y-3">
+            <motion.div
+              variants={listVariants}
+              initial="hidden"
+              animate="show"
+              className="space-y-3"
+            >
               {topLosers.map((stock) => (
                 <motion.div key={stock.ticker} variants={itemVariants}>
                   <Link
@@ -193,12 +266,22 @@ export default function HomePage() {
                     className="flex items-center justify-between p-3 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors group"
                   >
                     <div>
-                      <span className="font-mono font-semibold text-sm">{stock.ticker}</span>
-                      <span className="text-xs text-[var(--text-dim)] ml-2">{stock.name}</span>
+                      <span className="font-mono font-semibold text-sm">
+                        {stock.ticker}
+                      </span>
+                      <span className="text-xs text-[var(--text-dim)] ml-2">
+                        {stock.name}
+                      </span>
                     </div>
                     <div className="text-right">
-                      <div className="font-mono tabular-nums text-sm">{formatCurrency(stock.price)}</div>
-                      <ChangeIndicator value={stock.changePercent} size="sm" showIcon={false} />
+                      <div className="font-mono tabular-nums text-sm">
+                        {formatCurrency(stock.price)}
+                      </div>
+                      <ChangeIndicator
+                        value={stock.changePercent}
+                        size="sm"
+                        showIcon={false}
+                      />
                     </div>
                   </Link>
                 </motion.div>
@@ -233,15 +316,20 @@ export default function HomePage() {
                   transition={{ delay: 0.35 + i * 0.04 }}
                   className="rounded-lg p-4 border border-[var(--border-color)] hover:scale-[1.02] transition-transform cursor-default"
                   style={{ background: bgColor }}
-                  title={`${sector.name}: ${sector.change >= 0 ? '+' : ''}${sector.change.toFixed(2)}%`}
+                  title={`${sector.name}: ${sector.change >= 0 ? "+" : ""}${sector.change.toFixed(2)}%`}
                 >
-                  <div className="text-xs text-[var(--text-secondary)] mb-1 truncate">{sector.name}</div>
+                  <div className="text-xs text-[var(--text-secondary)] mb-1 truncate">
+                    {sector.name}
+                  </div>
                   <div
                     className={`text-sm font-mono font-semibold tabular-nums ${
-                      isPositive ? 'text-[var(--accent-green)]' : 'text-[var(--accent-red)]'
+                      isPositive
+                        ? "text-[var(--accent-green)]"
+                        : "text-[var(--accent-red)]"
                     }`}
                   >
-                    {isPositive ? '+' : ''}{sector.change.toFixed(2)}%
+                    {isPositive ? "+" : ""}
+                    {sector.change.toFixed(2)}%
                   </div>
                   <div className="text-[10px] text-[var(--text-dim)] mt-1">
                     {formatCompactCurrency(sector.marketCap)}

@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VSM Frontend
 
-## Getting Started
+The user-facing dashboard for the FEC Virtual Stock Market, built with Next.js 16.
 
-First, run the development server:
+## ⚡️ Technology Stack
 
+- **Next.js 16**: App Router + Turbopack for lightning-fast HMR.
+- **Tailwind CSS**: Utility-first styling.
+- **Zustand**: Lightweight global state management (Portfolio, Market Data).
+- **Framer Motion**: Smooth animations for UI transitions.
+- **Recharts**: Responsive charts for stock history and portfolio performance.
+- **Socket.io-client**: Real-time communication with the backend.
+
+## 🚀 Getting Started
+
+### Install Dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Development Server
+```bash
+npm run dev
+```
+Runs on [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Environment Variables (.env)
+Create a `.env` file in this directory:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+NEXT_PUBLIC_API_URL="http://localhost:8080" # Backend URL
+NEXTAUTH_URL="http://localhost:3000"        # Frontend URL (required for NextAuth)
+NEXTAUTH_SECRET="your-secret-key"           # Secure random string
+```
 
-## Learn More
+## 📂 Key Directories
 
-To learn more about Next.js, take a look at the following resources:
+- `src/app`: App Router pages and layouts.
+  - `(auth)`: Login/Register pages.
+  - `(dashboard)`: Main trading interface.
+- `src/components`:
+  - `charts/`: Reusable chart components.
+  - `ui/`: Shared UI elements (Buttons, Modals, Cards).
+- `src/store`: Zustand stores (`marketStore`, `portfolioStore`, `authStore`).
+- `src/lib`: Utilities and mock data generators.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🔄 State Management
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+We use **Zustand** to handle application state:
+- **`marketStore`**: Handles the list of stocks, real-time price updates, and socket connections.
+- **`portfolioStore`**: Manages the user's cash, holdings, and transaction history.
+- **`authStore`**: Manages user session and authentication status.
 
-## Deploy on Vercel
+## 🎨 Styling
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Global styles are defined in `src/app/globals.css`. We use a custom dark theme with specific CSS variables:
+- `--bg-base`: Deep midnight background.
+- `--accent-green`: Success/Profit indicator.
+- `--accent-red`: Loss/Danger indicator.
+- `--accent-blue`: Primary brand color.

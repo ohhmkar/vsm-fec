@@ -9,9 +9,10 @@ import {
 import { StatusCodes } from 'http-status-codes';
 import { db } from '../../services/index';
 import { users } from '../../models/index';
-import { eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm'; // Fixed import: eq comes from drizzle-orm
 import { createToken } from '../../common/utils';
 import { initializePlayer } from '../../game/helpers/initializers';
+import bcrypt from 'bcryptjs';
 
 type RegisterUserHandler = ReqHandler<IRegisterUserDto>;
 
@@ -20,7 +21,19 @@ export const registerUser: RegisterUserHandler = async function (req, res) {
   if (!email || !password || !u1Name) {
     throw new BadRequest('Email, Password, and Player 1 Name are Required');
   }
-  await db.insert(users).values({ email, password, u1Name, u2Name, isAdmin });
+
+  // Hash password
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+
+  await db.insert(users).values({ 
+    email, 
+    password: hashedPassword, 
+    u1Name, 
+    u2Name, 
+    isAdmin 
+  });
+
   res.status(StatusCodes.CREATED).json({
     status: 'Success',
   });
@@ -36,12 +49,14 @@ export const loginUser: LoginUserHandler = async function (req, res) {
   }
 
   const user = result[0];
-  if (user.password !== password) {
+  const isPasswordMatch = await bcrypt.compare(password, user.password);
+  if (!isPasswordMatch) {
     throw new Unauthenticated('Invalid Password');
   }
 
   if (user.isAdmin) {
-    throw new Unauthorized('User is an Admin');
+    // Admins use loginAdmin, players use loginUser
+    throw new Unauthorized('Admin Check: User is an Admin, use appropriate login route.');
   }
 
   const playerId = await initializePlayer(user.id);
@@ -61,7 +76,8 @@ export const loginAdmin: LoginUserHandler = async function (req, res) {
   }
 
   const user = result[0];
-  if (user.password !== password) {
+  const isPasswordMatch = await bcrypt.compare(password, user.password);
+  if (!isPasswordMatch) {
     throw new Unauthenticated('Invalid Password');
   }
 

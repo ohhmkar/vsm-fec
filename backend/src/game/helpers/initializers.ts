@@ -10,11 +10,11 @@ import { initialBankBalance } from '../../common/game.config';
 
 export function initializePlayer(userId: string) {
   return db.transaction(async (trx) => {
-    const stockData: { symbol: string; volume: number }[] = [];
+    const stockData: { symbol: string; volume: number; avgCost: number }[] = [];
 
     (await trx.select({ symbol: stocks.symbol }).from(stocks)).forEach(
       (stock) => {
-        stockData.push({ symbol: stock.symbol, volume: 0 });
+        stockData.push({ symbol: stock.symbol, volume: 0, avgCost: 0 });
       },
     );
 

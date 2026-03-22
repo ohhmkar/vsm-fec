@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DB_URL")
+}
+
+model User {
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email    String  @unique
+  password String
+  u1Name   String  @map("u1Name")
+  u2Name   String? @map("u2Name")
+  isAdmin  Boolean @default(false) @map("is_admin")
+
+  account      PlayerAccount?
+  transactions Transaction[]
+
+  @@map("users")
+}
+
+model PlayerAccount {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId   String @unique @map("user_id") @db.Uuid
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isBanned Boolean @default(false) @map("is_banned")
+
+  portfolio PlayerPortfolio?
+
+  @@map("player_account")
+}
+
+model PlayerPortfolio {
+  playerId String        @id @map("player_id") @db.Uuid
+  player   PlayerAccount @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  bankBalance         Float @map("bank_balance")
+  totalPortfolioValue Float @map("total_portfolio_value")
+  stocks              Json
+
+  @@map("player_portfolio")
+}
+
+model Stock {
+  symbol          String @id @db.VarChar
+  roundIntroduced Int    @map("round_introduced") @db.SmallInt
+  price           Float
+  volatility      Float
+
+  transactions Transaction[]
+
+  @@map("stocks_game")
+}
+
+model StockGameData {
+  id         Int    @id @default(autoincrement())
+  symbol     String @db.VarChar
+  forRound   Int    @map("round_applicable") @db.SmallInt
+  volatility Float
+
+  @@map("stocks")
+}
+
+model News {
+  id              Int     @id @default(autoincrement())
+  content         String
+  forInsider      Boolean @default(false) @map("for_insider")
+  roundApplicable Int     @map("round_applicable")
+
+  @@map("news")
+}
+
+model GameState {
+  id            String   @id @default("state")
+  currentRound  Int      @default(0) @map("current_round")
+  isRoundActive Boolean  @default(false) @map("is_round_active")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("game_state")
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  userId      String          @map("user_id") @db.Uuid
+  user        User            @relation(fields: [userId], references: [id])
+  stockSymbol String          @map("stock_symbol") @db.VarChar
+  stock       Stock           @relation(fields: [stockSymbol], references: [symbol])
+  type        TransactionType
+  quantity    Int
+  price       Float
+  total       Float
+  round       Int
+  timestamp   DateTime        @default(now())
+
+  @@map("transactions")
+}
+
+enum TransactionType {
+  BUY
+  SELL
+}

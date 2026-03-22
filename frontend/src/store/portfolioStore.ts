@@ -6,7 +6,7 @@ import { Holding, Transaction, PortfolioSnapshot } from '@/types';
 import { generateId } from '@/lib/utils';
 import { useAuthStore } from './authStore';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080';
 
 const STARTING_CASH = 100000;
 
@@ -54,14 +54,13 @@ export const usePortfolioStore = create<PortfolioStore>()(
             const cash = balData.data.balance;
             const backendHoldings: any[] = portData.data.portfolio;
             
-            // Map backend simple portfolio ({ name, volume, value }) to our rich structure
+            // Map backend simple portfolio ({ name, volume, value, avgCost }) to our rich structure
             const currentHoldings = get().holdings;
             const newHoldings: Holding[] = backendHoldings.map(bh => {
-              const existing = currentHoldings.find(h => h.ticker === bh.name);
-              const avgCost = existing ? existing.avgCost : bh.value; // Approximate avg cost if not existing
+              const avgCost = bh.avgCost || bh.value;
               return {
                 ticker: bh.name,
-                name: existing?.name || bh.name,
+                name: bh.name, // The backend doesn't send the full name yet, maybe we should fix that too, but ticker is reliable
                 shares: bh.volume,
                 currentPrice: bh.value,
                 avgCost,

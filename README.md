@@ -1,100 +1,119 @@
 # FEC Virtual Stock Market (FEC-VSM)
 
-A virtual stock market platform designed for live simulation events. It features real-time simulated market data, a dynamic portfolio evaluation system, and event-specific power-ups. The backend leverages an Ornstein-Uhlenbeck process with jump diffusion for realistic pricing models.
+A high-performance virtual stock market simulation platform designed for college events and finance competitions. It features real-time simulated market data, sub-second latency updates, and a comprehensive trading interface.
 
-## Features
+## 🚀 Key Features
 
-- **Real-Time Market Data**: WebSockets stream price updates to all connected clients.
-- **Dynamic Portfolio Valuation**: Automated recalculation of net worth driven by real-time ticker data.
-- **News System**: A synced news ticker that correlates with simulated market shocks.
-- **Power-Ups Module**:
-  - *Insider Trading*: Provides early access to upcoming market events.
-  - *Muft Ka Paisa*: Triggers an immediate cash grant.
-  - *Stock Betting*: Allows traders to lock capital on bullish or bearish predictions for specific tickers.
-- **Admin Dashboard**: Restricted visibility containing the live portfolios, rankings, and active trades of all users.
-- **Leaderboard**: Real-time ranking system based on total portfolio value.
+- **Real-Time Market Engine**: Simulates realistic stock price movements using Ornstein-Uhlenbeck processes and jump diffusion models.
+- **Live Trading Interface**: Buy and sell stocks instantly with dynamic validation and portfolio updates.
+- **Dynamic Portfolio Tracking**: Real-time calculation of Net Worth, P&L, and Weighted Average Cost Basis (WACB).
+- **Interactive Charts**: Candlestick and Area charts with multiple timeframes and sparklines for quick trend analysis.
+- **Power-Ups System**: Gamified elements like "Insider Trading" (news peeks) and "Muft Ka Paisa" (cash grants).
+- **Security**: Rate limiting, localized input validation, and secure authentication via NextAuth/JWT.
+- **Admin Dashboard**: Control game states (Start/Stop), view active users, and monitor market health.
 
-## Architecture
+## 🛠 Tech Stack
 
-- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS, Zustand, Recharts, Framer Motion.
-- **Backend**: Node.js, Express, Socket.IO.
-- **Database**: PostgreSQL (Neon Database recommended), Drizzle ORM.
+### Frontend
+- **Framework**: Next.js 16 (App Router) with Turbopack
+- **Styling**: Tailwind CSS, Framer Motion
+- **State Management**: Zustand (Persisted Store)
+- **Charts**: Recharts, Chart.js
+- **Network**: Socket.io-client
 
-## Local Hosting Guide
+### Backend
+- **Runtime**: Node.js
+- **Framework**: Express.js
+- **Database**: PostgreSQL (via Neon / Supabase)
+- **ORM**: Drizzle ORM
+- **Real-time**: Socket.io
+- **Security**: Helmet, Rate-Limit, BCrypt
 
-### 1. Database Setup (Neon)
-1. Create a PostgreSQL project on [Neon.tech](https://neon.tech/).
-2. Copy your connection string. It will look similar to: `postgresql://user:password@hostname/dbname?sslmode=require`.
+## 📂 Project Structure
 
-### 2. Backend Setup
-Navigate to the `backend` directory:
+```bash
+FEC-VSM/
+├── backend/                # Express.js Server & Game Engine
+│   ├── src/
+│   │   ├── controllers/    # API Route Handlers
+│   │   ├── game/           # Core Game Logic & Simulation Loop
+│   │   ├── models/         # Database Models (Drizzle)
+│   │   └── ...
+│   └── ...
+├── frontend/               # Next.js Client Application
+│   ├── src/
+│   │   ├── app/            # App Router Pages
+│   │   ├── components/     # Reusable UI & Charts
+│   │   ├── store/          # Zustand Global State
+│   │   └── ...
+│   └── ...
+└── README.md
+```
+
+## ⚡️ Quick Start
+
+### Prerequisites
+- Node.js 18+
+- PostgreSQL Database (Local or Cloud like Neon/Supabase)
+
+### 1. Backend Setup
+
+Navigate to the backend directory:
 ```bash
 cd backend
 npm install
 ```
 
-Create a `.env` file in the `backend` directory:
+Create a `.env` file in `backend/`:
 ```env
-DATABASE_URL="your-neon-connection-string"
 PORT=8080
+DATABASE_URL="postgres://user:pass@host/db"
+JWT_SECRET="your-super-secret-jwt-key"
 ALLOWED_ORIGIN="http://localhost:3000"
-JWT_SECRET="generate-a-secure-secret-key"
+NODE_ENV="development"
 
-# Game Configuration
-MAX_GAME_ROUNDS=12
-ROUND_DURATION=15 # in minutes
+# Game Logic Config
 INITIAL_BANK_BALANCE=100000
-MUFT_KA_PAISA=50000
+ROUND_DURATION=15  # Minutes
 ```
 
-Run database migrations to generate the schema in Neon, and start the server:
+Run migrations and start the server:
 ```bash
-npm run db:push
-npm run start:dev
+npm run db:push    # Push schema to DB
+npm run start:dev  # Start server with watch mode
 ```
-*(In development mode, the game and initial trading round will automatically start on boot.)*
 
-### 3. Frontend Setup
-Navigate to the `frontend` directory:
+### 2. Frontend Setup
+
+Navigate to the frontend directory:
 ```bash
 cd frontend
 npm install
 ```
 
-Create a `.env` file in the `frontend` directory:
+Create a `.env` file in `frontend/`:
 ```env
-NEXT_PUBLIC_API_URL="http://127.0.0.1:8080"
-NEXTAUTH_SECRET="generate-another-secure-secret-key"
+NEXT_PUBLIC_API_URL="http://localhost:8080"
 NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="your-nextauth-secret-key" # Must match backend JWT_SECRET ideally, or be unique for Auth.js
 ```
 
-Start the Next.js development server:
+Start the application:
 ```bash
 npm run dev
 ```
-The application will be accessible at `http://localhost:3000`.
 
-## Deployment Guide
+Visit `http://localhost:3000` to access the platform.
 
-### Backend (e.g., Render, Railway)
-1. Provision a Node.js web service.
-2. Add your Environment Variables (`DATABASE_URL`, `PORT`, `ALLOWED_ORIGIN` pointing to your deployed frontend, `JWT_SECRET`, and Game Configs).
-3. **Build Command**: `npm install && npm run build` (Ensures TypeScript is compiled to `dist/`).
-4. **Start Command**: `node dist/app.js` (Or equivalent entry point).
-5. Expose the port so the frontend can connect via HTTPS and WSS (WebSocket Secure).
+## 🛡️ Security & Architecture Notes
+- **Game Loop**: The backend runs a recursive game loop that handles state transitions (`TRADING_STAGE` -> `CALCULATION_STAGE`). It does not rely on external cron jobs.
+- **Cost Basis**: Portfolio cost basis is calculated on the backend (Weighted Average) to ensure data integrity and prevent client-side manipulation.
+- **Rate Limiting**: API endpoints are protected against spam/DDoS using `express-rate-limit`.
+- **Lockfiles**: Ensure you interact with `package-lock.json` only within the respective `backend` or `frontend` directories. The root directory should typically remain clean.
 
-### Frontend (e.g., Vercel)
-1. Deploy the `frontend` folder directly to Vercel/Netlify.
-2. Set Environment Variables:
-   - `NEXT_PUBLIC_API_URL`: Your deployed backend URL (e.g., `https://api.yourdomain.com`).
-   - `NEXTAUTH_SECRET`: The same secret used locally.
-   - `NEXTAUTH_URL`: Your deployed Vercel URL.
-3. The platform will automatically detect Next.js, compile, and serve the trading dashboard.
-
-## Admin Controls
-
-The virtual stock market operates on a strict backend state machine (`INVALID` -> `ON` -> `OPEN`). 
-- **Admin Account**: You can register an account with `isAdmin: true` by calling `/auth/register` manually, or toggling the flag directly in your Neon DB dashboard.
-- **Start Game**: Triggers the `ON` stage (allows users to log in).
-- **Start Round**: Triggers the `OPEN` stage (allows actual trading, market data streaming, and portfolio valuation). 
-*(Note: These triggers run automatically only when booting the backend using `start:dev` for local testing convenience. In production, an admin must invoke the API endpoints `POST /admin/start-game` and `POST /admin/start-round`.)*
+## 🤝 Contributing
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
