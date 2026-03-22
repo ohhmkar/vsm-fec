@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build Artifacts
+dist/
+build/
+coverage/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+.env.test
+.env.production
+.env.development
+
+# Editor & System
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Database Data (if prominent)
+postgres-data/
+data/
+
+# Misc
+firebase.json
+firebase.prod.json
+old/

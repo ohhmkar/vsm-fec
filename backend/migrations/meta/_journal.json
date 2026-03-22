@@ -1,0 +1,20 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1711637212502,
+      "tag": "0000_naive_blur",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1711705842264,
+      "tag": "0001_dusty_the_executioner",
+      "breakpoints": true
+    }
+  ]
+}
