@@ -13,7 +13,11 @@
     "start:prod": "node dist/app.js",
     "db:push": "prisma db push",
     "postinstall": "prisma generate",
-    "seed": "tsx src/seed.ts"
+    "seed": "tsx src/seed.ts",
+    "test:buy": "tsx load-test/pure-buy.ts",
+    "test:sell": "tsx load-test/pure-sell.ts",
+    "test:demo": "tsx load-test/demo-50-users.ts",
+    "db:reset": "tsx src/reset-and-seed.ts"
   },
   "keywords": [],
   "author": "lanceHoenhymmm",

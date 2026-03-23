@@ -9,8 +9,8 @@ export const roundDuration =
   (isNaN(envRoundDuration) ? 0 : envRoundDuration) * 60 * 1000;
 
 const envInitialBankBalance = Number(process.env.INITIAL_BANK_BALANCE);
-export const initialBankBalance = isNaN(envInitialBankBalance)
-  ? 0
+export const initialBankBalance = isNaN(envInitialBankBalance) || envInitialBankBalance === 0
+  ? 10000000
   : envInitialBankBalance;
 
 const envMuftPaisa = Number(process.env.MUFT_KA_PAISA);

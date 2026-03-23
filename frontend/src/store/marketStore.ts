@@ -88,15 +88,58 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
 
             const newPrice = payload.price;
             
-            // Append incoming tick to history
-            const newHistory = [...stock.history, {
-              date: new Date(payload.timestamp).toISOString(),
-              open: newPrice,
-              high: newPrice,
-              low: newPrice,
-              close: newPrice,
-              volume: payload.quantity
-            }];
+            // Candle Aggregation Logic (1-minute candles)
+            const tickTime = payload.timestamp;
+            const alignedTime = Math.floor(tickTime / 60000) * 60000; // Align to minute start
+            const alignedISO = new Date(alignedTime).toISOString();
+            
+            let newHistory = [...stock.history];
+            const lastCandle = newHistory[newHistory.length - 1];
+            
+            if (lastCandle) {
+              const lastTime = new Date(lastCandle.date).getTime();
+              // Check if we are in the same minute as the last candle
+              // Note: lastCandle.date comes from backend/seed which might be aligned or not.
+              // We assume strict 1-minute buckets.
+              const lastAligned = Math.floor(lastTime / 60000) * 60000;
+              
+              if (alignedTime === lastAligned) {
+                // Update existing candle
+                const updatedCandle = {
+                  ...lastCandle,
+                  high: Math.max(lastCandle.high, newPrice),
+                  low: Math.min(lastCandle.low, newPrice),
+                  close: newPrice,
+                  volume: lastCandle.volume + payload.quantity
+                };
+                newHistory[newHistory.length - 1] = updatedCandle;
+              } else {
+                // Start a new candle
+                newHistory.push({
+                  date: alignedISO,
+                  open: newPrice,
+                  high: newPrice,
+                  low: newPrice,
+                  close: newPrice,
+                  volume: payload.quantity
+                });
+              }
+            } else {
+              // Initialize history if empty
+              newHistory.push({
+                date: alignedISO,
+                open: newPrice,
+                high: newPrice,
+                low: newPrice,
+                close: newPrice,
+                volume: payload.quantity
+              });
+            }
+            
+            // Optional: Limit history length to prevent memory leaks (e.g. 2000 candles)
+            if (newHistory.length > 2000) {
+              newHistory = newHistory.slice(newHistory.length - 2000);
+            }
 
             return {
               ...stock,

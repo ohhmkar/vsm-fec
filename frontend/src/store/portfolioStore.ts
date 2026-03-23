@@ -8,7 +8,7 @@ import { useAuthStore } from './authStore';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080';
 
-const STARTING_CASH = 100000;
+const STARTING_CASH = 10000000;
 
 interface PortfolioStore {
   cash: number;
@@ -131,15 +131,45 @@ export const usePortfolioStore = create<PortfolioStore>()(
       },
 
       updateHoldingPrices: (prices) => {
-        set((state) => ({
-          holdings: state.holdings.map((h) => {
+        set((state) => {
+          const newHoldings = state.holdings.map((h) => {
             const currentPrice = prices[h.ticker] ?? h.currentPrice;
             const marketValue = Math.round(h.shares * currentPrice * 100) / 100;
             const pnl = Math.round((currentPrice - h.avgCost) * h.shares * 100) / 100;
             const pnlPercent = Math.round(((currentPrice - h.avgCost) / h.avgCost) * 10000) / 100;
             return { ...h, currentPrice, marketValue, pnl, pnlPercent };
-          }),
-        }));
+          });
+          
+          // Calculate new total portfolio value
+          const holdingsValue = newHoldings.reduce((sum, h) => sum + h.marketValue, 0);
+          const currentTotalValue = state.cash + holdingsValue;
+          
+          // Update snapshots logic to make graph live
+          const now = Date.now();
+          let newSnapshots = [...state.snapshots];
+          const lastSnapshot = newSnapshots[newSnapshots.length - 1];
+
+          // If last snapshot is recent (< 2 sec), update it to prevent too many points
+          if (lastSnapshot && now - lastSnapshot.timestamp < 2000) {
+             newSnapshots[newSnapshots.length - 1] = { 
+               ...lastSnapshot, 
+               totalValue: currentTotalValue,
+               timestamp: now
+             };
+          } else {
+             newSnapshots.push({ timestamp: now, totalValue: currentTotalValue });
+          }
+          
+          // Limit snapshots history to prevent memory issues (e.g. last 500 points)
+          if (newSnapshots.length > 500) {
+            newSnapshots = newSnapshots.slice(newSnapshots.length - 500);
+          }
+
+          return { 
+            holdings: newHoldings,
+            snapshots: newSnapshots
+          };
+        });
       },
 
       resetPortfolio: () => {

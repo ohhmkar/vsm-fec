@@ -2,7 +2,7 @@
 
 The core game engine and API server for the FEC Virtual Stock Market.
 
-## 🔧 Architecture
+## Architecture
 
 The backend is built on **Express.js** and uses **Drizzle ORM** for type-safe database interactions. It handles:
 1.  **Game State Management**: Controls the flow of the game (Lobby -> Trading -> Calculation -> Ended).
@@ -10,7 +10,7 @@ The backend is built on **Express.js** and uses **Drizzle ORM** for type-safe da
 3.  **Order Matching/Execution**: Validates and processes buy/sell orders securely.
 4.  **Real-time Broadcasting**: Pushes price and game state updates via Socket.io.
 
-## 🚀 Setup & Commands
+## Setup & Commands
 
 ### Install Dependencies
 ```bash
@@ -36,7 +36,7 @@ npm run build
 npm run start:prod
 ```
 
-## 🔑 Environment Variables
+## Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -47,7 +47,7 @@ npm run start:prod
 | `INITIAL_BANK_BALANCE` | Starting cash for new users | `100000` |
 | `ROUND_DURATION` | Duration of one trading round (minutes) | `15` |
 
-## 📡 API Overview
+## API Overview
 
 ### Auth
 - `POST /auth/login`
@@ -63,7 +63,7 @@ npm run start:prod
 - `game:stage` - Broadcasts current game stage.
 - `market:update` - Broadcasts new stock prices.
 
-## 🛡 Security Features
+## Security Features
 - **Rate Limiting**: Applied to sensitive routes to prevent abuse.
 - **Input Validation**: Strict type checking and logic validation (e.g., no negative quantities).
 - **Helmet**: Sets secure HTTP headers.
