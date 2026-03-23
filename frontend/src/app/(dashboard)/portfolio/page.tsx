@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import {
@@ -12,19 +12,74 @@ import {
   ChevronDown,
   ChevronUp,
   ScrollText,
+  Lock,
 } from 'lucide-react';
 import { usePortfolioStore } from '@/store/portfolioStore';
 import { useMarketStore } from '@/store/marketStore';
+import { useAuthStore } from '@/store/authStore';
 import { PortfolioChart } from '@/components/charts/PortfolioChart';
 import { ChangeIndicator } from '@/components/ui/ChangeIndicator';
 import { PageWrapper } from '@/components/ui/PageWrapper';
 import { listVariants, itemVariants } from '@/components/ui/PageWrapper';
 import { formatCurrency, formatPercent } from '@/lib/utils';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+interface IPOClaimedSymbols {
+  [symbol: string]: {
+    locked: boolean;
+    unlockRound?: number;
+  };
+}
+
 export default function PortfolioPage() {
   const { cash, holdings, transactions, snapshots, getTotalValue, getTotalPnL } = usePortfolioStore();
   const stocks = useMarketStore((s) => s.stocks);
+  const user = useAuthStore((s) => s.user);
   const [showTransactions, setShowTransactions] = useState(false);
+  const [ipoLockedSymbols, setIpoLockedSymbols] = useState<Set<string>>(new Set());
+  const [currentRound, setCurrentRound] = useState(1);
+
+  useEffect(() => {
+    const fetchIPOStatus = async () => {
+      if (!user?.id) return;
+      try {
+        const res = await fetch(`${BACKEND_URL}/game/info/game-info`, {
+          headers: { Authorization: `Bearer ${user.id}` },
+        });
+        const data = await res.json();
+        if (data.status === 'Success') {
+          setCurrentRound(data.data.roundNo || 1);
+        }
+      } catch (err) {
+        console.error('Failed to fetch game info', err);
+      }
+    };
+
+    const fetchLockedStocks = async () => {
+      if (!user?.id) return;
+      try {
+        const res = await fetch(`${BACKEND_URL}/admin/players`, {
+          headers: { Authorization: `Bearer ${user.id}` },
+        });
+        const data = await res.json();
+        if (data.status === 'Success' && data.data) {
+          const currentUser = data.data.find((p: any) => p.id === user.id);
+          if (currentUser?.ipoLockedSymbols) {
+            const locked = new Set(currentUser.ipoLockedSymbols as string[]);
+            setIpoLockedSymbols(locked);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch IPO status', err);
+      }
+    };
+
+    fetchIPOStatus();
+    fetchLockedStocks();
+    const interval = setInterval(fetchIPOStatus, 10000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const totalValue = getTotalValue();
   const { dollar: totalPnLDollar, percent: totalPnLPercent } = getTotalPnL();
@@ -140,16 +195,26 @@ export default function PortfolioPage() {
                   </tr>
                 </thead>
                 <motion.tbody variants={listVariants} initial="hidden" animate="show">
-                  {holdings.map((h) => (
+                  {holdings.map((h) => {
+                    const isLocked = ipoLockedSymbols.has(h.ticker);
+                    return (
                     <motion.tr
                       key={h.ticker}
                       variants={itemVariants}
-                      className="border-b border-[var(--border-color)]/50 hover:bg-[var(--bg-elevated)]/50 transition-colors"
+                      className={`border-b border-[var(--border-color)]/50 transition-colors ${isLocked ? 'bg-[var(--accent-gold)]/5' : 'hover:bg-[var(--bg-elevated)]/50'}`}
                     >
                       <td className="py-3 px-5">
-                        <Link href={`/stocks/${h.ticker}`} className="font-mono font-semibold text-[var(--accent-blue)] hover:underline">
-                          {h.ticker}
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link href={`/stocks/${h.ticker}`} className="font-mono font-semibold text-[var(--accent-blue)] hover:underline">
+                            {h.ticker}
+                          </Link>
+                          {isLocked && (
+                            <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-[var(--accent-gold)]/20 text-[var(--accent-gold)] rounded font-medium">
+                              <Lock size={10} />
+                              LOCKED
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-[var(--text-secondary)] text-xs hidden md:table-cell">{h.name}</td>
                       <td className="py-3 px-4 text-right font-mono tabular-nums">{h.shares}</td>
@@ -167,15 +232,22 @@ export default function PortfolioPage() {
                         <ChangeIndicator value={h.pnlPercent} size="sm" showIcon={false} />
                       </td>
                       <td className="py-3 px-5 text-center">
-                        <Link
-                          href={`/stocks/${h.ticker}`}
-                          className="px-3 py-1.5 text-xs font-medium bg-[var(--accent-red)]/10 text-[var(--accent-red)] rounded-lg hover:bg-[var(--accent-red)]/20 transition-colors"
-                        >
-                          Sell
-                        </Link>
+                        {isLocked ? (
+                          <span className="px-3 py-1.5 text-xs font-medium bg-[var(--bg-elevated)] text-[var(--text-dim)] rounded-lg">
+                            Locked until R{currentRound + 1}
+                          </span>
+                        ) : (
+                          <Link
+                            href={`/stocks/${h.ticker}`}
+                            className="px-3 py-1.5 text-xs font-medium bg-[var(--accent-red)]/10 text-[var(--accent-red)] rounded-lg hover:bg-[var(--accent-red)]/20 transition-colors"
+                          >
+                            Sell
+                          </Link>
+                        )}
                       </td>
                     </motion.tr>
-                  ))}
+                    );
+                  })}
                 </motion.tbody>
               </table>
             </div>

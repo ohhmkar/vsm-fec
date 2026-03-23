@@ -73,10 +73,5 @@ registerGameGateway(io);
 
 httpServer.listen(port, () => {
   console.log(`Server Listening to port: ${port}...`);
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('Auto-starting game for development...');
-    setTimeout(() => {
-      startGame().then(() => startRound());
-    }, 1000);
-  }
+  console.log('Game server ready. Use admin panel to start the game and rounds.');
 });

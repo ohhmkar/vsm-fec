@@ -27,9 +27,11 @@ model PlayerAccount {
   user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   isBanned Boolean @default(false) @map("is_banned")
 
+  recentlySoldStocks Json   @default("[]") @map("recently_sold_stocks")
+  ipoClaimedSymbols  Json   @default("[]") @map("ipo_claimed_symbols")
+
   portfolio PlayerPortfolio?
   powerups  PlayerPowerups?
-
 
   @@map("player_account")
 }
@@ -46,10 +48,17 @@ model PlayerPortfolio {
 }
 
 model Stock {
-  symbol          String @id @db.VarChar
-  roundIntroduced Int    @map("round_introduced") @db.SmallInt
+  symbol          String  @id @db.VarChar
+  name            String? @map("name")
+  sector          String? @map("sector")
+  roundIntroduced Int     @map("round_introduced") @db.SmallInt
   price           Float
   volatility      Float
+
+  dividendAmount    Float   @default(0) @map("dividend_amount")
+  ipoPrice          Float?  @map("ipo_price")
+  ipoRound          Int?    @map("ipo_round")
+  availableInIPO    Boolean @default(false) @map("available_in_ipo")
 
   transactions Transaction[]
 
@@ -71,16 +80,42 @@ model News {
   forInsider      Boolean @default(false) @map("for_insider")
   roundApplicable Int     @map("round_applicable")
 
+  type          NewsType @default(GENERATED)
+  sentiment     String   @default("NEUTRAL")
+  affectedStocks Json?   @map("affected_stocks")
+  isAdminNews    Boolean @default(false) @map("is_admin_news")
+  priceImpact    Float   @default(0) @map("price_impact")
+  createdAt      DateTime @default(now()) @map("created_at")
+
   @@map("news")
+}
+
+enum NewsType {
+  GENERATED
+  ADMIN
 }
 
 model GameState {
   id            String   @id @default("state")
   currentRound  Int      @default(0) @map("current_round")
   isRoundActive Boolean  @default(false) @map("is_round_active")
+  roundStartTime DateTime? @map("round_start_time")
+  roundDuration  Int?      @map("round_duration") // in minutes, for current active round
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@map("game_state")
+}
+
+model RoundConfig {
+  roundNo     Int      @id @map("round_no")
+  duration    Int      @map("duration") // in minutes
+  description String?
+  rules       Json?    @default("{}")
+  scheduledStartTime DateTime? @map("scheduled_start_time")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("round_config")
 }
 
 model Transaction {
@@ -114,7 +149,33 @@ model PlayerPowerups {
   stockBettingAmount       Float?  @map("stock_betting_amount")
   stockBettingPrediction   String? @map("stock_betting_prediction") @db.Char(2)
   stockBettingLockedSymbol String? @map("stock_betting_locked_symbol") @db.VarChar
-  stockBettingLockedPrice  Float?  @map("stock_betting_locked_price")
+  stockBettingLockedPrice  Float? @map("stock_betting_locked_price")
 
   @@map("player_powerups")
+}
+
+model IPOAllocation {
+  id        String   @id @default(uuid())
+  playerId  String   @map("player_id") @db.Uuid
+  symbol    String   @map("symbol") @db.VarChar
+  quantity  Int      @map("quantity")
+  price     Float    @map("price")
+  round     Int      @map("round")
+  claimed   Boolean  @default(false) @map("claimed")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([playerId, symbol, round])
+  @@map("ipo_allocations")
+}
+
+model DividendDeclaration {
+  id        String   @id @default(uuid())
+  symbol    String   @map("symbol") @db.VarChar
+  amount    Float    @map("amount")
+  round     Int      @map("round")
+  processed Boolean  @default(false) @map("processed")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([symbol, round])
+  @@map("dividend_declarations")
 }

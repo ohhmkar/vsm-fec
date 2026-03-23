@@ -4,7 +4,7 @@ import { validatorFactory } from '../../middlewares/validator.middleware';
 import { blockAdmin } from '../../middlewares/authorizer.middleware';
 import { checkRoundActive } from '../../middlewares/gameStatus.middleware';
 import { tradeDtoSchema } from './game.controller.dto';
-import { executeTradeHandler } from './game.controller';
+import { executeTradeHandler, claimIPOHandler, getPendingIPOHandler } from './game.controller';
 import { infoRouter } from './info/info.router';
 import { powerupRouter } from './powerup/powerup.router';
 
@@ -29,3 +29,7 @@ gameRouter.post(
   validatorFactory(tradeDtoSchema),
   executeTradeHandler,
 );
+
+// IPO routes
+gameRouter.get('/ipo/pending', blockAdmin, getPendingIPOHandler);
+gameRouter.post('/ipo/claim', blockAdmin, checkRoundActive, claimIPOHandler);

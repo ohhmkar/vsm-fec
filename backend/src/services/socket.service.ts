@@ -23,7 +23,7 @@ export function broadcastStockUpdate(
   symbol: string,
   newPrice: number,
   oldPrice: number,
-  tradeType: 'BUY' | 'SELL',
+  tradeType: 'BUY' | 'SELL' | 'MARKET',
   quantity: number,
 ) {
   if (!io) return;
@@ -40,9 +40,21 @@ export function broadcastStockUpdate(
   };
 
   io.emit('stock:price-update', payload);
-  logger.info(
-    `[REALTIME] ${symbol}: $${oldPrice.toFixed(2)} → $${newPrice.toFixed(2)} (${tradeType} ${quantity} units, ${payload.changePercent > 0 ? '+' : ''}${payload.changePercent.toFixed(2)}%)`,
-  );
+  // Log less verbosely for market updates to avoid spam
+  if (tradeType !== 'MARKET') {
+    logger.info(
+      `[REALTIME] ${symbol}: $${oldPrice.toFixed(2)} → $${newPrice.toFixed(2)} (${tradeType} ${quantity} units, ${payload.changePercent > 0 ? '+' : ''}${payload.changePercent.toFixed(2)}%)`,
+    );
+  }
+}
+
+/**
+ * Broadcast a game reset event to all connected clients
+ */
+export function broadcastGameReset() {
+  if (!io) return;
+  io.emit('game:reset');
+  logger.info('[REALTIME] Broadcasting Game Reset to all clients.');
 }
 
 /**
@@ -102,4 +114,41 @@ export function broadcastNotification(message: string, type: 'info' | 'success' 
     timestamp: Date.now(),
   });
   logger.info(`[ADMIN NOTIFICATION] (${type.toUpperCase()}): ${message}`);
+}
+
+interface NewsItem {
+  id: number;
+  content: string;
+  sentiment: string;
+  isAdminNews: boolean;
+}
+
+let newsBroadcastInterval: NodeJS.Timeout | null = null;
+
+export async function broadcastStaggeredNews(newsItems: NewsItem[], intervalMs: number = 45000) {
+  if (!io) return;
+
+  if (newsBroadcastInterval) {
+    clearInterval(newsBroadcastInterval);
+  }
+
+  let currentIndex = 0;
+
+  const sendNext = () => {
+    if (currentIndex < newsItems.length && io) {
+      io.emit('news:item', newsItems[currentIndex]);
+      currentIndex++;
+    }
+  };
+
+  sendNext();
+
+  newsBroadcastInterval = setInterval(sendNext, intervalMs);
+}
+
+export function stopStaggeredNews() {
+  if (newsBroadcastInterval) {
+    clearInterval(newsBroadcastInterval);
+    newsBroadcastInterval = null;
+  }
 }

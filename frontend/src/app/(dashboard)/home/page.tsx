@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -9,17 +9,18 @@ import {
   BarChart3,
   DollarSign,
   Zap,
+  ChevronLeft,
+  ChevronRight,
+  Pause,
+  Play,
 } from "lucide-react";
 import { useMarketStore } from "@/store/marketStore";
-import { MarketIndexChart } from "@/components/charts/MarketIndexChart";
+import { NewsTicker } from "@/components/ui/NewsTicker";
+import { RoundInfoBanner } from "@/components/ui/RoundInfoBanner";
 import { ChangeIndicator } from "@/components/ui/ChangeIndicator";
 import { PageWrapper } from "@/components/ui/PageWrapper";
 import { itemVariants, listVariants } from "@/components/ui/PageWrapper";
-import {
-  calculateIndexHistory,
-  calculateMarketIndex,
-  getSectors,
-} from "@/lib/stockEngine";
+import { MiniSparkline } from "@/components/charts/MiniSparkline";
 import {
   formatCompactCurrency,
   formatVolume,
@@ -27,21 +28,23 @@ import {
 } from "@/lib/utils";
 import Link from "next/link";
 
-const TIMEFRAMES = ["30M", "1H", "2H", "ALL"];
-
 export default function HomePage() {
   const stocks = useMarketStore((s) => s.stocks);
-  const [timeframe, setTimeframe] = useState("ALL");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const cycleInterval = 8000;
 
-  const indexHistory = useMemo(() => calculateIndexHistory(stocks), [stocks]);
-  const currentIndex = useMemo(() => calculateMarketIndex(stocks), [stocks]);
-  const prevIndex =
-    indexHistory.length >= 2
-      ? indexHistory[indexHistory.length - 2].close
-      : currentIndex;
-  const indexChange = currentIndex - prevIndex;
-  const indexChangePercent =
-    prevIndex !== 0 ? (indexChange / prevIndex) * 100 : 0;
+  useEffect(() => {
+    if (stocks.length === 0 || isPaused) return;
+
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % stocks.length);
+    }, cycleInterval);
+
+    return () => clearInterval(interval);
+  }, [stocks.length, isPaused]);
+
+  const currentStock = stocks[currentIndex];
 
   const sorted = useMemo(
     () => [...stocks].sort((a, b) => b.changePercent - a.changePercent),
@@ -56,7 +59,6 @@ export default function HomePage() {
   const declining = stocks.filter((s) => s.changePercent < 0).length;
   const mostActive = [...stocks].sort((a, b) => b.volume - a.volume)[0];
 
-  // Sector performance
   const sectors = useMemo(() => {
     const sectorMap = new Map<
       string,
@@ -86,45 +88,133 @@ export default function HomePage() {
     );
   }
 
+  const nextStock = () => {
+    setCurrentIndex((prev) => (prev + 1) % stocks.length);
+  };
+
+  const prevStock = () => {
+    setCurrentIndex((prev) => (prev - 1 + stocks.length) % stocks.length);
+  };
+
   return (
     <PageWrapper>
+      <NewsTicker />
+      <RoundInfoBanner />
       <div className="space-y-6">
-        {/* Hero: Market Index Chart */}
+        {/* Stock Cycling Hero */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl p-6"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
-            <div>
-              <h2 className="text-sm text-[var(--text-secondary)] mb-1">
-                FEC Market Index
-              </h2>
-              <div className="flex items-baseline gap-3">
-                <span className="text-3xl font-bold font-mono tabular-nums">
-                  {currentIndex.toFixed(2)}
-                </span>
-                <ChangeIndicator value={indexChangePercent} size="md" />
-              </div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={prevStock}
+                className="p-2 hover:bg-[var(--bg-elevated)] rounded-lg transition-colors"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <span className="text-sm text-[var(--text-dim)] font-mono">
+                {currentIndex + 1} / {stocks.length}
+              </span>
+              <button
+                onClick={nextStock}
+                className="p-2 hover:bg-[var(--bg-elevated)] rounded-lg transition-colors"
+              >
+                <ChevronRight size={20} />
+              </button>
             </div>
-            <div className="flex gap-1 bg-[var(--bg-elevated)] rounded-lg p-1">
-              {TIMEFRAMES.map((tf) => (
-                <button
-                  key={tf}
-                  onClick={() => setTimeframe(tf)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                    timeframe === tf
-                      ? "bg-[var(--accent-blue)] text-white"
-                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                  }`}
-                >
-                  {tf}
-                </button>
-              ))}
-            </div>
+            <button
+              onClick={() => setIsPaused(!isPaused)}
+              className="p-2 hover:bg-[var(--bg-elevated)] rounded-lg transition-colors text-[var(--text-secondary)]"
+              title={isPaused ? 'Resume cycling' : 'Pause cycling'}
+            >
+              {isPaused ? <Play size={18} /> : <Pause size={18} />}
+            </button>
           </div>
-          <div className="h-[320px]">
-            <MarketIndexChart data={indexHistory} timeframe={timeframe} />
+
+          {currentStock && (
+            <Link href={`/stocks/${currentStock.ticker}`}>
+              <motion.div
+                key={currentStock.ticker}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="cursor-pointer"
+              >
+                <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="text-3xl font-bold font-mono">
+                        {currentStock.ticker}
+                      </span>
+                      <span className="text-sm text-[var(--text-dim)] px-2 py-0.5 bg-[var(--bg-elevated)] rounded">
+                        {currentStock.sector}
+                      </span>
+                    </div>
+                    <p className="text-[var(--text-secondary)]">
+                      {currentStock.name}
+                    </p>
+                  </div>
+                  <div className="flex items-end gap-6">
+                    <div className="flex-1 min-w-[200px] h-20">
+                      <MiniSparkline
+                        data={currentStock.history}
+                        isPositive={currentStock.changePercent >= 0}
+                      />
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold font-mono tabular-nums">
+                        {formatCurrency(currentStock.price)}
+                      </div>
+                      <ChangeIndicator value={currentStock.changePercent} size="md" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-[var(--bg-elevated)] rounded-xl">
+                  <div>
+                    <div className="text-xs text-[var(--text-dim)] mb-1">Day High</div>
+                    <div className="font-mono font-medium">
+                      {formatCurrency(currentStock.dayHigh)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-[var(--text-dim)] mb-1">Day Low</div>
+                    <div className="font-mono font-medium">
+                      {formatCurrency(currentStock.dayLow)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-[var(--text-dim)] mb-1">Volume</div>
+                    <div className="font-mono font-medium">
+                      {formatVolume(currentStock.volume)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-[var(--text-dim)] mb-1">Market Cap</div>
+                    <div className="font-mono font-medium">
+                      {formatCompactCurrency(currentStock.marketCap)}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </Link>
+          )}
+
+          {/* Stock Dots */}
+          <div className="flex justify-center gap-1.5 mt-4">
+            {stocks.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentIndex(index)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  index === currentIndex
+                    ? 'bg-[var(--accent-blue)] w-4'
+                    : 'bg-[var(--border-color)] hover:bg-[var(--text-dim)]'
+                }`}
+              />
+            ))}
           </div>
         </motion.div>
 
@@ -160,7 +250,7 @@ export default function HomePage() {
             },
             {
               label: "Most Active",
-              value: mostActive?.ticker || "—",
+              value: mostActive?.ticker || "-",
               icon: Zap,
               color: "text-[var(--accent-gold)]",
             },

@@ -49,6 +49,11 @@ data/
 postgres-data/
 migrations/meta/_journal.json
 
+# Deployment
+.vercel/
+vercel.json
+deploy.md
+
 .DS_Store
 *.pem
 *.log

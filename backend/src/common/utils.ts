@@ -14,8 +14,8 @@ export function verifyToken(token: string): jwt.JwtPayload {
 
 export function createToken(payload: RequestUserProp) {
   return jwt.sign(payload, process.env.AUTH_TOKEN_SECRET!, {
-    expiresIn: process.env.AUTH_TOKEN_LIFETIME,
-  });
+    expiresIn: process.env.AUTH_TOKEN_LIFETIME || '24h',
+  } as jwt.SignOptions);
 }
 
 export function arrayToMap<T, K extends keyof T>(

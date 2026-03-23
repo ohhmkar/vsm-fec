@@ -33,28 +33,59 @@ A virtual stock market simulation platform for college events and finance compet
 
 ---
 
-## Quick Start
+## Local Setup Guide
+
+Follow these steps to get the project running on your local machine.
 
 ### Prerequisites
 
-- Node.js 18+
-- PostgreSQL database
+- **Node.js** 18+ and **pnpm** (or npm)
+- **PostgreSQL** 12+ (local instance or running via Docker)
+- **Git**
 
-### 1. Backend Setup
+### 1. Database Setup
+
+Ensure you have a PostgreSQL database running.
+
+**Option A: Local PostgreSQL (macOS Homebrew example)**
+```bash
+brew install postgresql@15
+brew services start postgresql@15
+createdb vsm_db
+```
+
+**Option B: Existing PostgreSQL**
+- Create a database named `vsm_db` if it doesn't exist.
+
+### 2. Backend Setup
+
+Navigate to the backend directory:
 
 ```bash
 cd backend
-npm install
 ```
 
-Create a `.env` file in `backend/`:
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+Create a `.env` file (copy from `.env.example` if available, or use the template below):
 
 ```env
+# Database Connection
+DB_URL=postgresql://postgres:postgres@localhost:5432/vsm_db
+
+# Server Config
 PORT=8080
-DB_URL=postgresql://postgres:postgres@127.0.0.1:5432/vsm_db
-AUTH_TOKEN_SECRET=super-secret-jwt-key
-AUTH_TOKEN_LIFETIME=24h
 ALLOWED_ORIGIN=http://localhost:3000
+
+# Authentication
+AUTH_TOKEN_SECRET=super-secret-jwt-key-change-in-production
+AUTH_TOKEN_LIFETIME=24h
+
+# Game Configuration (Defaults)
 MAX_GAME_ROUNDS=10
 ROUND_DURATION=2
 INITIAL_BANK_BALANCE=10000
@@ -64,23 +95,56 @@ PRICE_IMPACT_MULTIPLIER=50.0
 TOTAL_SUPPLY_PER_STOCK=10000
 ```
 
-Start the server:
+Initialize the database and start the server:
 
 ```bash
-npm run db:push    # Push schema to DB
-npm run seed       # Seed initial data
-npm run start:dev  # Start server
+# Push Prisma schema to database
+pnpm db:push
+
+# Seed the database with initial data (stocks, users, etc.)
+pnpm seed
+
+# Start development server
+pnpm start:dev
 ```
 
-### 2. Frontend Setup
+The backend API will be running at `http://localhost:8080`.
+
+### 3. Frontend Setup
+
+Open a new terminal and navigate to the frontend directory:
 
 ```bash
 cd frontend
-npm install
-npm run dev
 ```
 
-Visit `http://localhost:3000`
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+Create a `.env.local` file:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8080
+NEXTAUTH_SECRET=your-nextauth-secret-key
+NEXTAUTH_URL=http://localhost:3000
+```
+
+Start the development server:
+
+```bash
+pnpm dev
+```
+
+The application will be running at `http://localhost:3000`.
+
+### Verification
+
+1.  Open [http://localhost:3000](http://localhost:3000) in your browser.
+2.  You should see the login page.
+3.  Ensure the backend shows logs indicating successful connection and game initialization.
 
 ---
 
@@ -276,6 +340,116 @@ FEC-VSM/
 ├── DEVELOPER_GUIDE.md     # Detailed guide
 └── README.md
 ```
+
+---
+
+---
+
+## Deployment Guide (Neon + Vercel)
+
+### Prerequisites
+
+- [Neon](https://neon.tech) account (free tier)
+- [Vercel](https://vercel.com) account (free tier)
+- Git repository pushed to GitHub/GitLab
+
+### Step 1: Neon Database Setup
+
+1. Log in to [Neon](https://neon.tech) and create a new project
+2. Choose a region closest to your users
+3. Wait for the project to be created
+4. Go to **Dashboard** > **Connection Details**
+5. Copy the **Connection String** (starts with `postgresql://`)
+
+### Step 2: Backend Deployment (Vercel)
+
+1. Go to [Vercel](https://vercel.com) and import your repository
+2. Configure the project:
+   - **Framework Preset**: Other
+   - **Build Command**: (leave empty)
+   - **Output Directory**: (leave empty)
+
+3. Add Environment Variables in Vercel:
+
+   | Variable | Value |
+   |----------|-------|
+   | `DB_URL` | Neon connection string (add `?sslmode=require` at the end) |
+   | `PORT` | 8080 |
+   | `ALLOWED_ORIGIN` | Your Vercel frontend URL (e.g., `https://your-app.vercel.app`) |
+   | `AUTH_TOKEN_SECRET` | Generate a secure random string (use `openssl rand -base64 32`) |
+   | `AUTH_TOKEN_LIFETIME` | 24h |
+   | `MAX_GAME_ROUNDS` | 10 |
+   | `ROUND_DURATION` | 2 |
+   | `INITIAL_BANK_BALANCE` | 10000 |
+   | `MUFT_KA_PAISA` | 1000 |
+   | `CACHE_TIME` | 30 |
+   | `PRICE_IMPACT_MULTIPLIER` | 50.0 |
+   | `TOTAL_SUPPLY_PER_STOCK` | 10000 |
+
+4. Deploy the backend
+
+5. Note your backend URL (e.g., `https://your-backend.vercel.app`)
+
+### Step 3: Frontend Deployment (Vercel)
+
+1. In your Vercel dashboard, import the repository again (or add a new project)
+2. Configure the project:
+   - **Framework Preset**: Next.js
+   - **Build Command**: `next build` (default)
+   - **Output Directory**: `.next` (default)
+
+3. Add Environment Variables:
+
+   | Variable | Value |
+   |----------|-------|
+   | `NEXT_PUBLIC_API_URL` | Your Vercel backend URL (e.g., `https://your-backend.vercel.app`) |
+   | `NEXTAUTH_SECRET` | Generate a secure random string |
+   | `NEXTAUTH_URL` | Your Vercel frontend URL |
+
+4. Deploy the frontend
+
+### Step 4: Database Initialization
+
+Since Vercel serverless functions can't run long-running seed scripts, you have two options:
+
+**Option A: Use Neon CLI**
+```bash
+# Install Neon CLI
+npm install -g neonctl
+
+# Authenticate
+neonctl auth login
+
+# Get connection string
+neonctl projects list
+
+# Push schema
+cd backend
+neonctl database create --project-name <your-project>
+```
+
+**Option B: Seed locally with remote DB**
+```bash
+# Update your local .env with Neon connection string
+DB_URL=postgresql://user:pass@host.neon.tech/dbname?sslmode=require
+
+# Push schema and seed
+cd backend
+pnpm db:push
+pnpm seed
+```
+
+### Step 5: Verify Deployment
+
+1. Open your Vercel frontend URL
+2. Try logging in with seeded test accounts
+3. Verify WebSocket connection works (check browser console for Socket.IO errors)
+
+### Troubleshooting
+
+- **500 Error on API calls**: Check Vercel function logs for Prisma connection errors
+- **WebSocket issues**: Ensure `ALLOWED_ORIGIN` includes your frontend URL
+- **Database connection**: Ensure `?sslmode=require` is appended to Neon URL
 
 ---
 

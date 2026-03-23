@@ -182,7 +182,10 @@ export function calculateMarketIndex(stocks: Stock[]): number {
 
 export function calculateIndexHistory(stocks: Stock[]): OHLCV[] {
   if (stocks.length === 0) return [];
-  const days = stocks[0].history.length;
+  
+  // Use minimum history length to ensure safe access for all stocks
+  const days = Math.min(...stocks.map(s => s.history.length));
+  
   const totalSeedCap = STOCK_SEEDS.reduce((s, se) => s + se.marketCapMultiplier, 0);
   const baseWeightedPrice = STOCK_SEEDS.reduce((s, seed) => {
     return s + seed.basePrice * (seed.marketCapMultiplier / totalSeedCap);
@@ -202,6 +205,8 @@ export function calculateIndexHistory(stocks: Stock[]): OHLCV[] {
       const weight = seed.marketCapMultiplier / totalSeedCap;
       const h = st.history[i];
       
+      if (!h) return; // Safety check for missing data point
+
       weightedOpen += h.open * weight;
       weightedHigh += h.high * weight;
       weightedLow += h.low * weight;
@@ -209,14 +214,16 @@ export function calculateIndexHistory(stocks: Stock[]): OHLCV[] {
       totalVolume += h.volume;
     });
 
-    result.push({
-      date: stocks[0].history[i].date,
-      open: round2((weightedOpen / baseWeightedPrice) * 1000),
-      high: round2((weightedHigh / baseWeightedPrice) * 1000),
-      low: round2((weightedLow / baseWeightedPrice) * 1000),
-      close: round2((weightedClose / baseWeightedPrice) * 1000),
-      volume: totalVolume,
-    });
+    if (stocks[0]?.history[i]) {
+      result.push({
+        date: stocks[0].history[i].date,
+        open: round2((weightedOpen / baseWeightedPrice) * 1000),
+        high: round2((weightedHigh / baseWeightedPrice) * 1000),
+        low: round2((weightedLow / baseWeightedPrice) * 1000),
+        close: round2((weightedClose / baseWeightedPrice) * 1000),
+        volume: totalVolume,
+      });
+    }
   }
   return result;
 }

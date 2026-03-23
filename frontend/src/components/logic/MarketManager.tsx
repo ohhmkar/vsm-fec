@@ -6,7 +6,7 @@ import { usePortfolioStore } from '@/store/portfolioStore';
 import { useAuthStore } from '@/store/authStore';
 
 export function MarketManager() {
-  const { stocks, initializeStocks, startSimulation, stopSimulation } = useMarketStore();
+  const { stocks, initializeStocks } = useMarketStore();
   const updateHoldingPrices = usePortfolioStore((s) => s.updateHoldingPrices);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
@@ -17,9 +17,7 @@ export function MarketManager() {
     if (stocks.length === 0) {
       initializeStocks();
     }
-    startSimulation();
-    return () => stopSimulation();
-  }, [isAuthenticated, stocks.length, initializeStocks, startSimulation, stopSimulation]);
+  }, [isAuthenticated, stocks.length, initializeStocks]);
 
   // Price synchronization
   useEffect(() => {

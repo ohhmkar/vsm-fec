@@ -2,7 +2,7 @@ import { RequestHandler, ErrorRequestHandler } from 'express';
 
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
-type AckResponse = { status: 'Success' | 'Failure'; data?: object };
+type AckResponse = { status: 'Success' | 'Failure'; data?: object; message?: string };
 type ReqHandler<TReqBody> = RequestHandler<
   object,
   AckResponse,
@@ -12,7 +12,22 @@ type ReqHandler<TReqBody> = RequestHandler<
 type ErrHandler = ErrorRequestHandler<object, AckResponse, object, object>;
 
 type Stages = 'INVALID' | 'OPEN' | 'CLOSE' | 'OFF' | 'ON';
-type IGameState = { roundNo: number; stage: Stages };
+
+export interface GameRules {
+  noShortSelling?: boolean;
+  noInsiderTrading?: boolean;
+  noBorrowing?: boolean;
+  [key: string]: any;
+}
+
+export type IGameState = {
+  roundNo: number;
+  stage: Stages;
+  isPaused: boolean;
+  pausedAt?: number;
+  pauseRemainingTime?: number | null;
+  activeRules?: GameRules;
+};
 
 interface RequestUserProp {
   playerId: string;

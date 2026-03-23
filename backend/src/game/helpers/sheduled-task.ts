@@ -2,10 +2,82 @@ import { IGameState } from '../../types';
 import { prisma } from '../../services/prisma.service';
 import { arrayToMap, roundTo2Places } from '../../common/utils';
 import { muftPaisa } from '../../common/game.config';
+import { broadcastNotification } from '../../services/socket.service';
 
 function calculateNewStockPrice(price: number, volatility: number) {
   const valChange = (volatility + 100) / 100;
   return roundTo2Places(price * valChange);
+}
+
+export async function processDividends(gameState: IGameState) {
+  const declarations = await prisma.dividendDeclaration.findMany({
+    where: {
+      round: gameState.roundNo,
+      processed: false,
+    },
+  });
+
+  if (declarations.length === 0) return;
+
+  for (const declaration of declarations) {
+    const stock = await prisma.stock.findUnique({
+      where: { symbol: declaration.symbol },
+    });
+
+    if (!stock || stock.dividendAmount <= 0) continue;
+
+    const portfolios = await prisma.playerPortfolio.findMany();
+    const dividendsPaid: { playerId: string; amount: number }[] = [];
+
+    for (const portfolio of portfolios) {
+      const holdings = portfolio.stocks as any[];
+      const stockHolding = holdings.find((h: any) => h.symbol === declaration.symbol);
+
+      if (stockHolding && stockHolding.volume > 0) {
+        const dividendAmount = stockHolding.volume * declaration.amount;
+        
+        await prisma.playerPortfolio.update({
+          where: { playerId: portfolio.playerId },
+          data: {
+            bankBalance: { increment: dividendAmount },
+            totalPortfolioValue: { increment: dividendAmount },
+          },
+        });
+
+        dividendsPaid.push({ playerId: portfolio.playerId, amount: dividendAmount });
+      }
+    }
+
+    await prisma.dividendDeclaration.update({
+      where: { id: declaration.id },
+      data: { processed: true },
+    });
+
+    broadcastNotification(
+      `${declaration.symbol} declared Rs.${declaration.amount.toFixed(2)} dividend per share. ${dividendsPaid.length} shareholders received dividends.`,
+      'success'
+    );
+  }
+}
+
+export async function clearPlayerRoundData() {
+  await prisma.playerAccount.updateMany({
+    data: {
+      recentlySoldStocks: [],
+    },
+  });
+}
+
+export async function unlockIPOShares(gameState: IGameState) {
+  const nextRound = gameState.roundNo + 1;
+  
+  await prisma.playerAccount.updateMany({
+    data: {
+      ipoClaimedSymbols: [],
+    },
+  });
+
+  console.log(`[IPO] Unlocked IPO shares for Round ${nextRound}`);
 }
 
 export async function updateStocks(gameState: IGameState) {

@@ -51,19 +51,21 @@ export const usePortfolioStore = create<PortfolioStore>()(
             
             // Map backend simple portfolio ({ name, volume, value, avgCost }) to our rich structure
             const currentHoldings = get().holdings;
-            const newHoldings: Holding[] = backendHoldings.map(bh => {
-              const avgCost = bh.avgCost || bh.value;
-              return {
-                ticker: bh.name,
-                name: bh.name, // The backend doesn't send the full name yet, maybe we should fix that too, but ticker is reliable
-                shares: bh.volume,
-                currentPrice: bh.value,
-                avgCost,
-                marketValue: bh.volume * bh.value,
-                pnl: (bh.value - avgCost) * bh.volume,
-                pnlPercent: avgCost > 0 ? ((bh.value - avgCost) / avgCost) * 100 : 0
-              };
-            });
+            const newHoldings: Holding[] = backendHoldings
+              .filter(bh => bh.volume > 0)
+              .map(bh => {
+                const avgCost = bh.avgCost || bh.value;
+                return {
+                  ticker: bh.name,
+                  name: bh.name, // The backend doesn't send the full name yet, maybe we should fix that too, but ticker is reliable
+                  shares: bh.volume,
+                  currentPrice: bh.value,
+                  avgCost,
+                  marketValue: bh.volume * bh.value,
+                  pnl: (bh.value - avgCost) * bh.volume,
+                  pnlPercent: avgCost > 0 ? ((bh.value - avgCost) / avgCost) * 100 : 0
+                };
+              });
 
             set({ cash, holdings: newHoldings });
           }

@@ -72,14 +72,8 @@ export class GameService {
       const stock = await prisma.stock.update({
         where: { symbol },
         data: {
-          currentPrice: newPrice,
+          price: newPrice,
           volatility: volatility ?? undefined,
-          priceHistory: {
-            create: {
-              price: newPrice,
-              round: currentState?.currentRound || 0,
-            }
-          }
         },
       });
       return stock;

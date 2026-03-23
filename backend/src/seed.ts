@@ -1,22 +1,35 @@
 import { prisma } from './services/prisma.service';
 import bcrypt from 'bcryptjs';
 
-const STOCK_SEEDS = [
-  { ticker: 'NVXA', basePrice: 100.0, volatility: 0.028 },
-  { ticker: 'GRNX', basePrice: 100.0, volatility: 0.022 },
-  { ticker: 'MDRX', basePrice: 100.0, volatility: 0.024 },
-  { ticker: 'FNTX', basePrice: 100.0, volatility: 0.018 },
-  { ticker: 'AERO', basePrice: 100.0, volatility: 0.02 },
-  { ticker: 'LUXE', basePrice: 100.0, volatility: 0.025 },
-  { ticker: 'OMKX', basePrice: 100.0, volatility: 0.035 },
-  { ticker: 'AGRI', basePrice: 100.0, volatility: 0.019 },
-  { ticker: 'STRM', basePrice: 100.0, volatility: 0.023 },
-  { ticker: 'CYBX', basePrice: 100.0, volatility: 0.026 },
-  { ticker: 'RLTY', basePrice: 100.0, volatility: 0.015 },
-  { ticker: 'MOTO', basePrice: 100.0, volatility: 0.021 },
-  { ticker: 'BRIX', basePrice: 100.0, volatility: 0.03 },
-  { ticker: 'GLBL', basePrice: 100.0, volatility: 0.017 },
-  { ticker: 'QUNT', basePrice: 100.0, volatility: 0.032 },
+interface StockSeed {
+  ticker: string;
+  name: string;
+  sector: string;
+  basePrice: number;
+  volatility: number;
+  ipoRound?: number;
+  ipoPrice?: number;
+  availableInIPO?: boolean;
+}
+
+const STOCK_SEEDS: StockSeed[] = [
+  { ticker: 'NVXA', name: 'NovaTech AI Systems', sector: 'Technology', basePrice: 100.0, volatility: 0.028 },
+  { ticker: 'GRNX', name: 'GreenWave Energy Corp', sector: 'Energy', basePrice: 100.0, volatility: 0.022 },
+  { ticker: 'MDRX', name: 'MedCore Pharmaceuticals', sector: 'Healthcare', basePrice: 100.0, volatility: 0.024 },
+  { ticker: 'FNTX', name: 'Fintera Banking Group', sector: 'Finance', basePrice: 100.0, volatility: 0.018 },
+  { ticker: 'AERO', name: 'Apex Aerospace Inc', sector: 'Industrials', basePrice: 100.0, volatility: 0.02 },
+  { ticker: 'LUXE', name: 'Luminary Retail Holdings', sector: 'Consumer Discretionary', basePrice: 100.0, volatility: 0.025 },
+  { ticker: 'OMKX', name: 'Omkar Crypto Exchange', sector: 'Finance', basePrice: 100.0, volatility: 0.035 },
+  { ticker: 'AGRI', name: 'AgriVault Commodities', sector: 'Materials', basePrice: 100.0, volatility: 0.019 },
+  { ticker: 'STRM', name: 'StreamVault Media', sector: 'Communication', basePrice: 100.0, volatility: 0.023 },
+  { ticker: 'CYBX', name: 'CyberShield Security', sector: 'Technology', basePrice: 100.0, volatility: 0.026 },
+  { ticker: 'RLTY', name: 'RealNest Property Trust', sector: 'Real Estate', basePrice: 100.0, volatility: 0.015 },
+  { ticker: 'MOTO', name: 'MotorFlex Automotive', sector: 'Consumer Discretionary', basePrice: 100.0, volatility: 0.021 },
+  { ticker: 'BRIX', name: 'BioRix Life Sciences', sector: 'Healthcare', basePrice: 100.0, volatility: 0.03 },
+  { ticker: 'GLBL', name: 'GlobalRoute Logistics', sector: 'Industrials', basePrice: 100.0, volatility: 0.017 },
+  { ticker: 'QUNT', name: 'Quantum Data Infrastructure', sector: 'Technology', basePrice: 100.0, volatility: 0.032 },
+  { ticker: 'OILI', name: 'OilCo Petrochemicals', sector: 'Energy', basePrice: 200.0, volatility: 0.025, ipoRound: 5, ipoPrice: 200.0, availableInIPO: true },
+  { ticker: 'TECH', name: 'TechVentures Capital', sector: 'Technology', basePrice: 350.0, volatility: 0.035, ipoRound: 5, ipoPrice: 350.0, availableInIPO: true },
 ];
 
 async function seed() {
@@ -25,16 +38,27 @@ async function seed() {
     for (const stock of STOCK_SEEDS) {
       await prisma.stock.upsert({
         where: { symbol: stock.ticker },
-        update: {},
+        update: {
+          name: stock.name,
+          sector: stock.sector,
+          ipoRound: stock.ipoRound,
+          ipoPrice: stock.ipoPrice,
+          availableInIPO: stock.availableInIPO ?? false,
+        },
         create: {
           symbol: stock.ticker,
-          roundIntroduced: 1,
+          name: stock.name,
+          sector: stock.sector,
+          roundIntroduced: stock.ipoRound ?? 1,
           price: stock.basePrice,
           volatility: stock.volatility,
+          ipoRound: stock.ipoRound,
+          ipoPrice: stock.ipoPrice,
+          availableInIPO: stock.availableInIPO ?? false,
         },
       });
     }
-    console.log('Successfully seeded 15 stocks!');
+    console.log(`Successfully seeded ${STOCK_SEEDS.length} stocks!`);
 
     const adminEmail = 'admin@example.com';
     const adminPassword = 'adminpassword';
@@ -60,7 +84,7 @@ async function seed() {
       {
         email: 'manan@example.com',
         password: 'manan123',
-        u1Name: 'Manan',
+        u1Name: 'manan',
         u2Name: 'Player1',
         isAdmin: false,
       },

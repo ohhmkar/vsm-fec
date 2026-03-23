@@ -210,7 +210,7 @@ export function MarketIndexChart({
       <div className="flex-1 min-h-0 w-full relative">
         <Chart
           type={chartType === "line" ? "line" : "candlestick"}
-          data={chartData}
+          data={chartData as any}
           options={options}
         />
       </div>

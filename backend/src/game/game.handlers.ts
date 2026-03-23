@@ -1,5 +1,5 @@
 import { IGameState } from '../types';
-import { NotFound, UnprocessableEntity } from '../errors/index';
+import { NotFound, UnprocessableEntity, ServiceUnavailable } from '../errors/index';
 import { prisma } from '../services/prisma.service';
 import { arrayToMap } from '../common/utils';
 import { muftPaisa } from '../common/game.config';
@@ -31,15 +31,39 @@ async function withRetry<T>(fn: () => Promise<T>, operationName: string): Promis
   throw lastError;
 }
 
+function checkRecentlySoldStocks(recentlySoldStocks: string[], symbol: string): boolean {
+  const soldStocks = recentlySoldStocks as string[];
+  return soldStocks.includes(symbol);
+}
+
 export async function buyStock(
   playerId: string,
   stockId: string,
   quantity: number,
   gameState: IGameState,
 ) {
+  if (gameState.isPaused) {
+    throw new ServiceUnavailable('Game is currently paused');
+  }
+
+  if (gameState.activeRules?.tradingMode === 'SELL_ONLY') {
+    throw new UnprocessableEntity('Selling only mode is active');
+  }
+
   return withRetry(async () => {
     let tradePrice = 0;
     let totalCost = 0;
+
+    const playerAccount = await prisma.playerAccount.findUnique({
+      where: { id: playerId },
+    });
+
+    if (playerAccount) {
+      const recentlySold = playerAccount.recentlySoldStocks as string[];
+      if (checkRecentlySoldStocks(recentlySold, stockId)) {
+        throw new UnprocessableEntity(`Cannot buy ${stockId} this round. You sold this stock recently.`);
+      }
+    }
 
     await prisma.$transaction(async (tx) => {
       const stockData = await tx.stock.findFirst({
@@ -51,6 +75,10 @@ export async function buyStock(
 
       if (!stockData) {
         throw new NotFound('Stock not found');
+      }
+
+      if (stockData.availableInIPO && stockData.ipoRound && gameState.roundNo < stockData.ipoRound) {
+        throw new UnprocessableEntity('Stock not available for trading yet');
       }
 
       const playerPort = await tx.playerPortfolio.findUnique({
@@ -122,9 +150,23 @@ export async function sellStock(
   quantity: number,
   gameState: IGameState,
 ) {
+  if (gameState.isPaused) {
+    throw new ServiceUnavailable('Game is currently paused');
+  }
+
+  if (gameState.activeRules?.tradingMode === 'BUY_ONLY') {
+    throw new UnprocessableEntity('Buying only mode is active');
+  }
+
   return withRetry(async () => {
     let tradePrice = 0;
     let totalRevenue = 0;
+
+    const playerAccount = await prisma.playerAccount.findUnique({
+      where: { id: playerId },
+    });
+    
+    const ipoClaimedSymbols = (playerAccount?.ipoClaimedSymbols || []) as string[];
 
     await prisma.$transaction(async (tx) => {
       const stockData = await tx.stock.findFirst({
@@ -157,6 +199,10 @@ export async function sellStock(
         throw new UnprocessableEntity('Insufficient stocks');
       }
 
+      if (ipoClaimedSymbols.includes(stockId)) {
+        throw new UnprocessableEntity(`Cannot sell ${stockId} yet. IPO shares are locked until Round ${gameState.roundNo + 1}`);
+      }
+
       tradePrice = stockData.price;
       totalRevenue = tradePrice * quantity;
       portStocks[stockIndex].volume -= quantity;
@@ -169,6 +215,15 @@ export async function sellStock(
           stocks: portStocks,
         },
       });
+
+      const recentlySold = (playerAccount?.recentlySoldStocks || []) as string[];
+      if (!recentlySold.includes(stockId)) {
+        const updatedRecentlySold = [...recentlySold, stockId];
+        await tx.playerAccount.update({
+          where: { id: playerId },
+          data: { recentlySoldStocks: updatedRecentlySold },
+        });
+      }
     }, { isolationLevel: 'ReadCommitted' });
 
     const newPrice = await applyTradeImpact(stockId, quantity, 'SELL');
@@ -278,15 +333,17 @@ export async function getPlayerPortfolio(playerId: string) {
     const stocks = await tx.stock.findMany();
     const stocksMap = arrayToMap(stocks, 'symbol');
 
-    const playerStocks = (portfolio.stocks as any[]).map((s: any) => {
-      const currentPrice = stocksMap.get(s.symbol)?.price || 0;
-      return {
-        name: s.symbol,
-        volume: s.volume,
-        value: currentPrice,
-        avgCost: s.avgCost || 0,
-      };
-    });
+    const playerStocks = (portfolio.stocks as any[])
+      .filter((s: any) => s.volume > 0)
+      .map((s: any) => {
+        const currentPrice = stocksMap.get(s.symbol)?.price || 0;
+        return {
+          name: s.symbol,
+          volume: s.volume,
+          value: currentPrice,
+          avgCost: s.avgCost || 0,
+        };
+      });
 
     return {
       valuation: portfolio.totalPortfolioValue,
@@ -305,6 +362,14 @@ export async function getPlayerBalence(playerId: string) {
 }
 
 export async function useInsiderTrading(playerId: string, gameState: IGameState) {
+  if (gameState.isPaused) {
+    throw new ServiceUnavailable('Game is currently paused');
+  }
+
+  if (gameState.activeRules?.noInsiderTrading) {
+    throw new UnprocessableEntity('Insider Trading is disabled for this round');
+  }
+
   return prisma.$transaction(async (tx) => {
     const powerups = await tx.playerPowerups.findUnique({
       where: { playerId },
