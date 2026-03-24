@@ -8,7 +8,7 @@ import { broadcastStockUpdate } from './socket.service';
 import { logger } from './logging.service';
 
 const MIN_PRICE = 0.01;
-const MAX_PRICE_RETRIES = 3;
+const MAX_PRICE_RETRIES = 10;
 
 async function withPriceRetry<T>(fn: () => Promise<T>): Promise<T> {
   for (let attempt = 1; attempt <= MAX_PRICE_RETRIES; attempt++) {
@@ -17,7 +17,7 @@ async function withPriceRetry<T>(fn: () => Promise<T>): Promise<T> {
     } catch (error: any) {
       const errorCode = error?.code || '';
       if ((errorCode === 'P2034' || errorCode === 'P1008') && attempt < MAX_PRICE_RETRIES) {
-        await new Promise(resolve => setTimeout(resolve, 20 * attempt));
+        await new Promise(resolve => setTimeout(resolve, 50 * attempt));
         continue;
       }
       throw error;

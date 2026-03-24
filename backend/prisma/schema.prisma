@@ -61,6 +61,7 @@ model Stock {
   availableInIPO    Boolean @default(false) @map("available_in_ipo")
 
   transactions Transaction[]
+  priceHistory StockPriceHistory[]
 
   @@map("stocks_game")
 }
@@ -72,6 +73,18 @@ model StockGameData {
   volatility Float
 
   @@map("stocks")
+}
+
+model StockPriceHistory {
+  id        Int      @id @default(autoincrement())
+  symbol    String   @db.VarChar
+  stock     Stock    @relation(fields: [symbol], references: [symbol], onDelete: Cascade)
+  price     Float
+  round     Int      @default(0)
+  timestamp DateTime @default(now())
+
+  @@index([symbol, timestamp])
+  @@map("stock_price_history")
 }
 
 model News {

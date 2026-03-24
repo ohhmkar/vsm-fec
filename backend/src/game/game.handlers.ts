@@ -6,8 +6,8 @@ import { muftPaisa } from '../common/game.config';
 import { applyTradeImpact } from '../services/realtime-price.service';
 import { broadcastTrade } from '../services/socket.service';
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 50;
+const MAX_RETRIES = 10;
+const RETRY_DELAY_MS = 100;
 
 async function withRetry<T>(fn: () => Promise<T>, operationName: string): Promise<T> {
   let lastError: Error | null = null;

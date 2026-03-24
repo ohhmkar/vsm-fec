@@ -271,7 +271,8 @@ export default function AdminDashboardPage() {
     const interval = setInterval(() => {
       fetchPlayers();
       fetchGameState();
-    }, 15000);
+      fetchRoundConfigs();
+    }, 5000);
     return () => clearInterval(interval);
   }, [user]);
 
@@ -369,6 +370,7 @@ export default function AdminDashboardPage() {
       if (data.status === 'Success') {
         setIsRoundActive(false);
         fetchRoundConfigs();
+        fetchGameState();
       } else {
         throw new Error(data.message);
       }
@@ -726,12 +728,23 @@ export default function AdminDashboardPage() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        {isCurrent && (
-                          <span className="text-xs px-2 py-1 bg-[var(--accent-green)] text-white rounded-full">
-                            ACTIVE
+                        {isCurrent && isRoundActive && (
+                          <button
+                            onClick={handleEndRound}
+                            disabled={actionLoading !== null}
+                            className="text-xs px-2 py-1 bg-[var(--accent-red)] text-white rounded-full hover:bg-red-600 disabled:opacity-50 flex items-center gap-1"
+                          >
+                            {actionLoading === 'end-round' ? <Loader2 size={12} className="animate-spin" /> : <Square size={12} />}
+                            END
+                          </button>
+                        )}
+                        {isCurrent && !isRoundActive && (
+                          <span className="text-xs px-2 py-1 bg-[var(--accent-blue)] text-white rounded-full">
+                            CURRENT
                           </span>
                         )}
-                        <button
+                        {!isCurrent && (
+                          <button
                           onClick={() => {
                             const editable: EditableRoundConfig = {
                               roundNo,
@@ -747,6 +760,7 @@ export default function AdminDashboardPage() {
                         >
                           <Edit2 size={16} className="text-[var(--text-dim)]" />
                         </button>
+                        )}
                         {!isCurrent && !isCompleted && (
                           <button
                             onClick={() => handleStartRound(roundNo)}
