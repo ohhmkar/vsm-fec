@@ -16,7 +16,25 @@ export type Sector =
   | 'Consumer Discretionary'
   | 'Materials'
   | 'Communication'
-  | 'Real Estate';
+  | 'Real Estate'
+  | 'Specialty Chemicals'
+  | 'FMCG'
+  | 'NBFC'
+  | 'IT Services'
+  | 'Power Exchange'
+  | 'Capital Goods'
+  | 'Jewellery Retail'
+  | 'Stock Exchange'
+  | 'Insurance'
+  | 'Hospital Chain'
+  | 'Renewable Energy'
+  | 'Metals'
+  | 'Quick Commerce'
+  | 'Logistics'
+  | 'Semiconductors'
+  | 'Retail Brokerage'
+  | 'Fertilizers'
+  | 'Pharma Exports';
 
 export interface Stock {
   ticker: string;

@@ -20,7 +20,7 @@ import { io as ioClient, Socket } from 'socket.io-client';
 const BASE_URL = process.env.BASE_URL || 'http://localhost:8080';
 const NUM_USERS = Number(process.env.NUM_USERS) || 40;
 const CYCLES_PER_USER = Number(process.env.CYCLES_PER_USER) || 40;
-const STOCKS = ['NVXA', 'GRNX', 'MDRX', 'FNTX', 'AERO', 'LUXE', 'OMKX', 'AGRI', 'STRM', 'CYBX', 'RLTY', 'MOTO', 'BRIX', 'GLBL', 'QUNT'];
+const STOCKS = ['PETR', 'AGRI', 'CRED', 'BLUE', 'GRID', 'INFR', 'AURU', 'TRSP', 'SCRT', 'MEDC', 'VOLT', 'TITA', 'URBC', 'FIBR', 'NEXT', 'FINV', 'GRNF', 'HELX'];
 
 // ─── Tracking ────────────────────────────────────────────────────────────────
 

@@ -2,9 +2,9 @@ import { IGameState } from '../types';
 import { NotFound, UnprocessableEntity, ServiceUnavailable } from '../errors/index';
 import { prisma } from '../services/prisma.service';
 import { arrayToMap } from '../common/utils';
-import { muftPaisa } from '../common/game.config';
 import { applyTradeImpact } from '../services/realtime-price.service';
 import { broadcastTrade } from '../services/socket.service';
+import { muftPaisa } from '../common/game.config';
 
 const MAX_RETRIES = 10;
 const RETRY_DELAY_MS = 100;
@@ -77,7 +77,7 @@ export async function buyStock(
         throw new NotFound('Stock not found');
       }
 
-      if (stockData.availableInIPO && stockData.ipoRound && gameState.roundNo < stockData.ipoRound) {
+      if (stockData.availableInIPO && stockData.ipoRound && gameState.roundNo <= stockData.ipoRound) {
         throw new UnprocessableEntity('Stock not available for trading yet');
       }
 
@@ -180,6 +180,10 @@ export async function sellStock(
         throw new NotFound('Stock not found');
       }
 
+      if (stockData.availableInIPO && stockData.ipoRound && gameState.roundNo <= stockData.ipoRound) {
+        throw new UnprocessableEntity('Stock not available for trading yet');
+      }
+
       const playerPort = await tx.playerPortfolio.findUnique({
         where: { playerId },
       });
@@ -254,9 +258,20 @@ export async function getNews(gameState: IGameState) {
       roundApplicable: gameState.roundNo,
       forInsider: false,
     },
-    select: { content: true },
+    select: { 
+      content: true,
+      sentiment: true,
+      type: true,
+      createdAt: true
+    },
+    orderBy: { createdAt: 'desc' }
   });
-  return newsData.map((n) => n.content);
+  return newsData.map((n) => ({
+    content: n.content,
+    sentiment: n.sentiment,
+    type: n.type === 'ADMIN' ? 'ADMIN' : 'GENERAL', // Mask specific news origin types from frontend
+    timestamp: n.createdAt.getTime()
+  }));
 }
 
 export async function getStocks(gameState: IGameState) {
@@ -264,13 +279,21 @@ export async function getStocks(gameState: IGameState) {
     where: {
       roundIntroduced: { lte: gameState.roundNo },
     },
-    select: { symbol: true, price: true },
+    select: { symbol: true, price: true, currentRoundOpenPrice: true },
   });
-  return stocks.map((s) => ({ id: s.symbol, value: s.price }));
+  return stocks.map((s) => ({ id: s.symbol, value: s.price, openPrice: s.currentRoundOpenPrice }));
 }
 
 export async function getLeaderboard() {
   const portfolios = await prisma.playerPortfolio.findMany({
+    where: {
+      player: {
+        user: {
+          isAdmin: false,
+          isTestUser: false,
+        },
+      },
+    },
     include: {
       player: {
         include: {
@@ -299,6 +322,57 @@ export async function getLeaderboard() {
       rank: index + 1,
       name: p.name,
       wealth: p.wealth,
+    }));
+
+  return leaderboard;
+}
+
+export async function getAdminLeaderboard(includeTestUsers: boolean = false) {
+  const where: any = {
+    player: {
+      user: {
+        isAdmin: false,
+      },
+    },
+  };
+
+  if (!includeTestUsers) {
+    where.player.user.isTestUser = false;
+  }
+
+  const portfolios = await prisma.playerPortfolio.findMany({
+    where,
+    include: {
+      player: {
+        include: {
+          user: {
+            select: { u1Name: true, u2Name: true, email: true },
+          },
+        },
+      },
+    },
+  });
+
+  const leaderboard = portfolios
+    .map((p) => {
+      const wealth = p.bankBalance + p.totalPortfolioValue;
+      const u1 = p.player.user.u1Name;
+      const u2 = p.player.user.u2Name;
+      const name = u2 ? `${u1} & ${u2}` : u1;
+      return {
+        id: p.playerId,
+        name,
+        email: p.player.user.email,
+        wealth,
+        stocks: p.stocks,
+        bankBalance: p.bankBalance,
+        portfolioValue: p.totalPortfolioValue,
+      };
+    })
+    .sort((a, b) => b.wealth - a.wealth)
+    .map((p, index) => ({
+      rank: index + 1,
+      ...p,
     }));
 
   return leaderboard;

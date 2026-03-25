@@ -32,6 +32,8 @@ export const registerUser: RegisterUserHandler = async function (req, res) {
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
 
+  const isTestUser = email.endsWith('@test.com');
+
   await prisma.user.create({
     data: {
       email,
@@ -39,6 +41,7 @@ export const registerUser: RegisterUserHandler = async function (req, res) {
       u1Name,
       u2Name,
       isAdmin: isAdmin || false,
+      isTestUser, // Automatically mark as test user if email is @test.com
     },
   });
 

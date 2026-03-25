@@ -16,6 +16,8 @@ import { prisma } from '../services/prisma.service';
 import { gameService } from '../services/game.logic';
 import { generateAndStoreNews } from '../services/news-generator.service';
 import { broadcastStaggeredNews } from '../services/socket.service';
+import { executeScenario, stopScenario } from '../services/scenario.service';
+import { getRandomMarketNews, applyMarketNewsImpact } from '../services/market-news.service';
 
 const gameEmitter = new EventEmitter();
 
@@ -38,7 +40,7 @@ let pausedRemainingTime: number | null = null;
 
 
 export function getGameState() {
-  return { ...gameState } as const;
+  return { ...gameState, roundEndTime, pausedRemainingTime } as const;
 }
 
 export async function startGame() {
@@ -50,7 +52,7 @@ export async function startGame() {
     logger.info('Game is ON: Server Open to Login Requests');
     
     // Start Scheduler for auto-round starts
-    startScheduler();
+    // startScheduler();
 
   } catch (error) {
     logger.error('Failed to initialize database: ', error);
@@ -100,6 +102,15 @@ export async function startRound(roundNumber?: number, durationMinutes?: number)
   
   logger.info(`Starting Round ${gameState.roundNo} for ${currentDurationMs / 60000} minutes...`);
 
+  // Snapshot current prices as round open prices
+  try {
+     // efficient raw update: open_price = price
+     await prisma.$executeRaw`UPDATE "stocks_game" SET "current_round_open_price" = "price"`;
+     logger.info(`Snapshotted open prices for Round ${nextRound}`);
+  } catch (e) {
+     logger.error('Failed to snapshot round open prices', e);
+  }
+
   // Sync DB game state — mark round as active so checkRoundActive middleware allows trades
   try {
     await gameService.startRound();
@@ -107,12 +118,61 @@ export async function startRound(roundNumber?: number, durationMinutes?: number)
     logger.error('Failed to sync DB round state:', error);
   }
 
+  // Execute scenario-based market manipulation before round opens (for all rounds)
+  if (nextRound >= 1) {
+    logger.info(`Running pre-round scenario for round ${nextRound}...`);
+    executeScenario(nextRound);
+  }
+
   gameEmitter.emit(gameOPEN);
 
-  // Generate and broadcast staggered news
+  // Generate and broadcast staggered news - mix of fake and real market news
   const newsIntervalMs = 45000; // 45 seconds between news items
-  const generatedNews = await generateAndStoreNews(nextRound, 5);
-  broadcastStaggeredNews(generatedNews, newsIntervalMs);
+  
+  // Generate 4 fake news items
+  const fakeNews = await generateAndStoreNews(nextRound, 4);
+  
+  // Get 1-2 real market news items (these will affect the market)
+  const realNewsCount = Math.random() < 0.6 ? 1 : 2;
+  const realMarketNews = getRandomMarketNews(realNewsCount);
+  
+  // Store real news in DB and get their DB records
+  const realNewsDbRecords = [];
+  for (const news of realMarketNews) {
+    const dbRecord = await prisma.news.create({
+      data: {
+        content: news.content,
+        sentiment: news.impact === 'AMBIGUOUS' ? 'NEUTRAL' : news.impact,
+        type: 'REAL',
+        isAdminNews: false,
+        roundApplicable: nextRound,
+        forInsider: false,
+        priceImpact: Math.abs(news.impactPercent),
+      },
+    });
+    realNewsDbRecords.push({ ...dbRecord, isAdminNews: false });
+    
+    // Apply market impact for real news (non-ambiguous)
+    if (news.impact !== 'AMBIGUOUS') {
+      setTimeout(() => {
+        applyMarketNewsImpact(news);
+      }, 5000 + Math.random() * 30000); // Delay 5-35 seconds after round start
+    }
+  }
+  
+  // Combine and shuffle fake and real news
+  const allNews = [...fakeNews, ...realNewsDbRecords];
+  const shuffledNews = allNews
+    .sort(() => Math.random() - 0.5)
+    .map((report) => ({
+      id: report.id,
+      content: report.content,
+      sentiment: report.sentiment,
+      isAdminNews: report.isAdminNews,
+      // Ensure we don't leak "type: 'GENERATED'/'REAL'"
+    }));
+  
+  broadcastStaggeredNews(shuffledNews, newsIntervalMs);
 
   import('../services/socket.service').then(({ broadcastLeaderboard, broadcastNews }) => {
     // Broadcast news slightly after round start
@@ -184,8 +244,9 @@ async function endRound() {
   
   clearInterval(leaderboardInterval);
   
-  // Stop market simulation
+  // Stop market simulation and scenarios
   marketGameSimulator.stop();
+  stopScenario();
 
   // Sync DB game state — mark round as inactive
   try {
@@ -242,8 +303,9 @@ export function pauseGame() {
     if (timeoutId) clearTimeout(timeoutId);
     if (leaderboardInterval) clearInterval(leaderboardInterval);
     
-    // Stop market simulation
+    // Stop market simulation and scenarios
     marketGameSimulator.stop();
+    stopScenario();
     
     gameState.isPaused = true;
     gameState.pausedAt = Date.now();

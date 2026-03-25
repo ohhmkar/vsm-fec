@@ -6,13 +6,13 @@ import { Points, PointMaterial, Float } from '@react-three/drei';
 import * as random from 'maath/random';
 import * as THREE from 'three';
 
-function MarketNetwork(props: any) {
-  const ref = useRef<any>(null!);
+function MarketNetwork(props: Record<string, unknown>) {
+  const ref = useRef<THREE.Points>(null!);
   const count = 2000;
   
   // Generate points in a sphere shell
   const positions = useMemo(() => {
-    return random.inSphere(new Float32Array(count * 3), { radius: 2.8 });
+    return random.inSphere(new Float32Array(count * 3), { radius: 2.8 }) as Float32Array;
   }, [count]);
 
   useFrame((state, delta) => {

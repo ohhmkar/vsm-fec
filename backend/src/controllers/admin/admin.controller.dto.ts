@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const addNewsRequestDtoSchema = z.array(
   z.object({
     content: z.string(),
-    forInsider: z.boolean(),
+    forInsider: z.boolean().default(false),
     roundApplicable: z.coerce.number(),
   }),
 );

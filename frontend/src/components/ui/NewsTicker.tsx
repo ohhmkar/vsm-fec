@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Clock, 
-  TrendingUp, 
-  TrendingDown, 
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Clock,
+  TrendingUp,
+  TrendingDown,
   Minus,
   AlertCircle,
   Loader2,
-} from 'lucide-react';
-import { useNewsStore } from '@/store/newsStore';
+} from "lucide-react";
+import { useNewsStore } from "@/store/newsStore";
 
 export function NewsTicker() {
-  const { news, fetchNews } = useNewsStore();
+  const { newsItems, fetchNews } = useNewsStore();
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
@@ -23,22 +23,28 @@ export function NewsTicker() {
   }, [fetchNews]);
 
   useEffect(() => {
-    if (news.length === 0) return;
+    if (newsItems.length === 0) return;
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % news.length);
+      setCurrentIndex((prev) => (prev + 1) % newsItems.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, [news.length]);
+  }, [newsItems.length]);
 
-  if (news.length === 0) return null;
+  if (newsItems.length === 0) return null;
 
-  const currentNews = news[currentIndex];
+  // Use newsItems directly (objects) instead of news (strings) to avoid typing/sync issues
+  const currentNewsItem = newsItems[currentIndex];
+  // Defensive check: ensure content is a string
+  const currentContent =
+    typeof currentNewsItem?.content === "string"
+      ? currentNewsItem.content
+      : "News update...";
 
   const getSentimentIcon = (sentiment: string) => {
     switch (sentiment) {
-      case 'BULLISH':
+      case "BULLISH":
         return <TrendingUp size={14} className="text-[var(--accent-green)]" />;
-      case 'BEARISH':
+      case "BEARISH":
         return <TrendingDown size={14} className="text-[var(--accent-red)]" />;
       default:
         return <Minus size={14} className="text-[var(--text-dim)]" />;
@@ -53,7 +59,7 @@ export function NewsTicker() {
           Breaking
         </span>
       </div>
-      
+
       <div className="flex-1 flex items-center justify-center overflow-hidden pl-28 pr-8">
         <AnimatePresence mode="wait">
           <motion.div
@@ -64,21 +70,21 @@ export function NewsTicker() {
             transition={{ duration: 0.3 }}
             className="flex items-center gap-3 text-sm"
           >
-            {getSentimentIcon('NEUTRAL')}
-            <span className="font-medium">{currentNews}</span>
+            {getSentimentIcon(currentNewsItem?.sentiment || "NEUTRAL")}
+            <span className="font-medium">{currentContent}</span>
           </motion.div>
         </AnimatePresence>
       </div>
 
       <div className="flex items-center gap-2 pr-4">
-        {news.map((_, index) => (
+        {newsItems.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentIndex(index)}
             className={`w-1.5 h-1.5 rounded-full transition-all ${
               index === currentIndex
-                ? 'bg-[var(--accent-blue)] w-3'
-                : 'bg-[var(--border-color)] hover:bg-[var(--text-dim)]'
+                ? "bg-[var(--accent-blue)] w-3"
+                : "bg-[var(--border-color)] hover:bg-[var(--text-dim)]"
             }`}
           />
         ))}

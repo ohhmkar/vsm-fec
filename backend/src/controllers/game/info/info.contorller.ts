@@ -35,9 +35,13 @@ export const getLeaderboardHandler: InfoEndpointHandler = async function (
 };
 
 export const getGameInfoHandler: InfoEndpointHandler = function (req, res) {
+  const state = getGameState();
   res.status(StatusCodes.OK).json({
     status: 'Success',
-    data: { ...getGameState() },
+    data: { 
+      ...state,
+      isRoundActive: state.stage === 'OPEN'
+    },
   });
 };
 

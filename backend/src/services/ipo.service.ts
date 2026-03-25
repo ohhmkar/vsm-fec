@@ -98,53 +98,60 @@ export async function allocateIPOStocks(allocations: IPOAllocationInput[]): Prom
   const createdAllocations: any[] = [];
   let allocated = 0;
 
-  for (const alloc of allocations) {
-    const stock = await prisma.stock.findUnique({
-      where: { symbol: alloc.symbol },
+  try {
+    await prisma.$transaction(async (tx) => {
+      for (const alloc of allocations) {
+        const stock = await tx.stock.findUnique({
+          where: { symbol: alloc.symbol },
+        });
+
+        if (!stock) {
+          throw new NotFound(`Stock ${alloc.symbol} not found`);
+        }
+
+        if (!stock.availableInIPO) {
+          throw new UnprocessableEntity(`Stock ${alloc.symbol} is not available for IPO`);
+        }
+
+        const existingAllocation = await tx.iPOAllocation.findUnique({
+          where: {
+            playerId_symbol_round: {
+              playerId: alloc.playerId,
+              symbol: alloc.symbol,
+              round: alloc.round,
+            },
+          },
+        });
+
+        if (existingAllocation) {
+          const updated = await tx.iPOAllocation.update({
+            where: { id: existingAllocation.id },
+            data: { quantity: alloc.quantity },
+          });
+          createdAllocations.push(updated);
+        } else {
+          const created = await tx.iPOAllocation.create({
+            data: {
+              playerId: alloc.playerId,
+              symbol: alloc.symbol,
+              quantity: alloc.quantity,
+              price: stock.ipoPrice || stock.price,
+              round: alloc.round,
+              claimed: false,
+            },
+          });
+          createdAllocations.push(created);
+        }
+
+        allocated++;
+      }
     });
 
-    if (!stock) {
-      throw new NotFound(`Stock ${alloc.symbol} not found`);
-    }
-
-    if (!stock.availableInIPO) {
-      throw new UnprocessableEntity(`Stock ${alloc.symbol} is not available for IPO`);
-    }
-
-    const existingAllocation = await prisma.iPOAllocation.findUnique({
-      where: {
-        playerId_symbol_round: {
-          playerId: alloc.playerId,
-          symbol: alloc.symbol,
-          round: alloc.round,
-        },
-      },
-    });
-
-    if (existingAllocation) {
-      const updated = await prisma.iPOAllocation.update({
-        where: { id: existingAllocation.id },
-        data: { quantity: alloc.quantity },
-      });
-      createdAllocations.push(updated);
-    } else {
-      const created = await prisma.iPOAllocation.create({
-        data: {
-          playerId: alloc.playerId,
-          symbol: alloc.symbol,
-          quantity: alloc.quantity,
-          price: stock.ipoPrice || stock.price,
-          round: alloc.round,
-          claimed: false,
-        },
-      });
-      createdAllocations.push(created);
-    }
-
-    allocated++;
+    return { success: true, allocated, allocations: createdAllocations };
+  } catch (error) {
+    console.error('Failed to allocate IPO stocks:', error);
+    throw error; // Re-throw to inform caller/handler
   }
-
-  return { success: true, allocated, allocations: createdAllocations };
 }
 
 export async function removeIPOAllocation(playerId: string, symbol: string, round: number): Promise<boolean> {

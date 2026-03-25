@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Medal, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
@@ -23,12 +23,17 @@ export default function LeaderboardPage() {
   const user = useAuthStore((s) => s.user);
   const socket = useMarketStore((s) => s.socket);
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
     if (!user?.id) return;
     try {
       const res = await fetch(`${BACKEND_URL}/game/info/leaderboard`, {
         headers: { Authorization: `Bearer ${user.id}` },
       });
+      if (!res.ok) {
+        setError('Failed to load leaderboard');
+        setLoading(false);
+        return;
+      }
       const data = await res.json();
       if (data.status === 'Success') {
         setLeaderboard(data.data);
@@ -41,11 +46,11 @@ export default function LeaderboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchLeaderboard();
-  }, [user]);
+  }, [fetchLeaderboard]);
 
   // Refetch when a round ends, and listen for live updates
   useEffect(() => {
@@ -60,7 +65,7 @@ export default function LeaderboardPage() {
       socket.off('game:stage:CALCULATION_STAGE', handleRecalc);
       socket.off('leaderboard:update', handleLiveUpdate);
     };
-  }, [socket]);
+  }, [socket, fetchLeaderboard]);
 
   return (
     <PageWrapper>

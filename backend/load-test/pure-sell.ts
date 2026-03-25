@@ -13,7 +13,7 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:8080';
 const NUM_USERS = Number(process.env.NUM_USERS) || 50;
 const TRADES_PER_USER = Number(process.env.TRADES_PER_USER) || 20;
 
-const STOCKS = ['NVXA', 'GRNX', 'MDRX', 'FNTX', 'AERO', 'LUXE', 'OMKX', 'AGRI', 'STRM', 'CYBX', 'RLTY', 'MOTO', 'BRIX', 'GLBL', 'QUNT'];
+const STOCKS = ['PETR', 'AGRI', 'CRED', 'BLUE', 'GRID', 'INFR', 'AURU', 'TRSP', 'SCRT', 'MEDC', 'VOLT', 'TITA', 'URBC', 'FIBR', 'NEXT', 'FINV', 'GRNF', 'HELX'];
 
 interface TradeResult {
   success: boolean;

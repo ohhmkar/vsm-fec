@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useMarketStore } from '@/store/marketStore';
-import { usePortfolioStore } from '@/store/portfolioStore';
-import { useAuthStore } from '@/store/authStore';
+import { useEffect } from "react";
+import { useMarketStore } from "@/store/marketStore";
+import { usePortfolioStore } from "@/store/portfolioStore";
+import { useAuthStore } from "@/store/authStore";
 
 export function MarketManager() {
   const { stocks, initializeStocks } = useMarketStore();
@@ -13,7 +13,7 @@ export function MarketManager() {
   // Simulation lifecycle
   useEffect(() => {
     if (!isAuthenticated) return;
-    
+
     if (stocks.length === 0) {
       initializeStocks();
     }

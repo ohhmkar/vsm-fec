@@ -19,8 +19,13 @@ import { startGame, startRound, terminateGame, extendActiveRound, forceEndRound,
 import { gameService } from '../../services/game.logic';
 import { broadcastNotification, broadcastGameReset, broadcastStaggeredNews } from '../../services/socket.service';
 import { prisma } from '../../services/prisma.service';
+import { getAdminLeaderboard } from '../../game/game.handlers';
 import { getIPOEligibilityList, allocateIPOStocks, removeIPOAllocation, getAvailableIPOStocks, getAllIPOAllocations } from '../../services/ipo.service';
 import { generateAndStoreNews } from '../../services/news-generator.service';
+import { triggerMarketNewsEvent } from '../../services/market-news.service';
+import { getGameState } from '../../game/game';
+import { executeScenario } from '../../services/scenario.service';
+import { logger } from '../../services/logging.service';
 
 // --- Pause Handlers ---
 export const pauseGameHandler: ControlEndpointHandler = async (req, res) => {
@@ -81,13 +86,18 @@ export const startRoundHandler: ControlEndpointHandler = async function (
 ) {
   const { roundNo, duration } = req.body as { roundNo?: number; duration?: number };
   
-  // We don't use setTimeout(startRound, 0) anymore because startRound is async and we want to pass params
-  // Also we want to handle errors if round determines it's invalid
-  startRound(roundNo, duration); 
-
-  res.status(StatusCodes.OK).json({
-    status: 'Success',
-  });
+  try {
+    await startRound(roundNo, duration);
+    res.status(StatusCodes.OK).json({
+      status: 'Success',
+    });
+  } catch (error) {
+    logger.error('Failed to start round:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      status: 'Failure',
+      message: 'Failed to start round'
+    });
+  }
 };
 
 export const extendRoundHandler: ControlEndpointHandler = async function(req, res) {
@@ -108,6 +118,15 @@ export const extendRoundHandler: ControlEndpointHandler = async function(req, re
 export const endRoundHandler: ControlEndpointHandler = async function(req, res) {
   await forceEndRound();
   res.status(StatusCodes.OK).json({ status: 'Success' });
+};
+
+export const getAdminLeaderboardHandler: ReqHandler<any> = async function(req, res) {
+  const includeTestUsers = (req.query as any).includeTestUsers === 'true';
+  const leaderboard = await getAdminLeaderboard(includeTestUsers);
+  res.status(StatusCodes.OK).json({
+    status: 'Success',
+    data: leaderboard,
+  });
 };
 
 export const createRoundConfigHandler: ControlEndpointHandler = async function(req, res) {
@@ -547,4 +566,67 @@ export const getRoundSummaryHandler: ReqHandler<object> = async function (req, r
       volumeByStock: volumeArray,
     },
   });
+};
+
+export const triggerMarketNewsHandler: ReqHandler<object> = async function (req, res) {
+  const { sentiment } = req.body as {
+    sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+  };
+
+  if (!sentiment || !['BULLISH', 'BEARISH', 'NEUTRAL'].includes(sentiment)) {
+    res.status(StatusCodes.BAD_REQUEST).json({
+      status: 'Failure',
+      message: 'Invalid sentiment. Must be BULLISH, BEARISH, or NEUTRAL',
+    });
+    return;
+  }
+
+  const gameState = getGameState();
+  if (gameState.stage !== 'OPEN') {
+    res.status(StatusCodes.BAD_REQUEST).json({
+      status: 'Failure',
+      message: 'Can only trigger market news during an active trading round',
+    });
+    return;
+  }
+
+  const result = await triggerMarketNewsEvent(sentiment, gameState.roundNo);
+
+  if (!result) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      status: 'Failure',
+      message: 'Failed to trigger market news event',
+    });
+    return;
+  }
+
+  res.status(StatusCodes.OK).json({
+    status: 'Success',
+    data: {
+      content: result.news.content,
+      sentiment: sentiment,
+      message: 'Market news event triggered',
+    },
+  });
+};
+
+export const runScenarioHandler: ControlEndpointHandler = async function (req, res) {
+  const gameState = getGameState();
+  const { roundNo } = req.body as { roundNo?: number };
+  const targetRound = roundNo || gameState.roundNo;
+  
+  if (!targetRound || targetRound < 1) {
+    res.status(StatusCodes.BAD_REQUEST).json({ status: 'Failure', message: 'Invalid round number' });
+    return;
+  }
+
+  logger.info(`Manually triggering scenario for round ${targetRound}`);
+  
+  try {
+    executeScenario(targetRound);
+    res.status(StatusCodes.OK).json({ status: 'Success', message: `Scenario triggered for Round ${targetRound}` });
+  } catch (error) {
+    logger.error('Error executing scenario:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ status: 'Failure', message: 'Failed to execute scenario' });
+  }
 };

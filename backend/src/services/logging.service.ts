@@ -4,16 +4,18 @@ config();
 
 const levels = {
   error: 0,
-  info: 1,
-  http: 2,
-  debug: 3,
+  warn: 1,
+  info: 2,
+  http: 3,
+  debug: 4,
 };
 
 const colors = {
   error: 'red',
+  warn: 'yellow',
   info: 'green',
   http: 'magenta',
-  debug: 'yellow',
+  debug: 'cyan',
 };
 
 const level = () => {

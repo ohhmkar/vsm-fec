@@ -28,6 +28,8 @@ import {
 import { clsx } from "clsx";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { MiniSparkline } from "@/components/charts/MiniSparkline";
+import { QuickTradeModal } from "@/components/portfolio/QuickTradeModal";
+import { Stock } from "@/types";
 
 type SortField = "ticker" | "price" | "changePercent" | "volume" | "marketCap";
 type SortDir = "asc" | "desc";
@@ -54,6 +56,7 @@ export default function StocksPage() {
   const [view, setView] = useState<ViewType>("table");
   const [sortField, setSortField] = useState<SortField>("marketCap"); // Default sort by Market Cap
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [tradeModalStock, setTradeModalStock] = useState<Stock | null>(null);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -397,22 +400,45 @@ export default function StocksPage() {
                     />
                   </div>
 
-                  <div className="h-12 w-full mb-4 opacity-50 group-hover:opacity-100 transition-opacity">
+                  <div className="h-12 w-full mb-4 opacity-100">
                     <MiniSparkline
                       data={stock.history}
                       isPositive={stock.changePercent >= 0}
                     />
                   </div>
 
-                  <div className="flex justify-between items-center text-xs text-[var(--text-dim)] border-t border-[var(--border-color)] pt-3">
-                    <span>Vol: {formatCompactCurrency(stock.volume)}</span>
-                    <span>Link &rarr;</span>
+                  <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-[var(--border-color)]">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTradeModalStock(stock);
+                      }}
+                      className="flex-1 text-center py-2 text-sm font-bold bg-[var(--accent-blue)] text-white rounded-lg hover:bg-[var(--accent-blue)]/90 transition-colors shadow-lg shadow-blue-500/20"
+                    >
+                      Trade
+                    </button>
+                    <Link
+                      href={`/stocks/${stock.ticker}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-xs font-medium text-[var(--accent-blue)] hover:underline px-2"
+                    >
+                      Details
+                    </Link>
                   </div>
                 </motion.div>
               ))}
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Quick Trade Modal */}
+        {tradeModalStock && (
+          <QuickTradeModal
+            stock={tradeModalStock}
+            isOpen={true}
+            onClose={() => setTradeModalStock(null)}
+          />
+        )}
       </div>
     </PageWrapper>
   );

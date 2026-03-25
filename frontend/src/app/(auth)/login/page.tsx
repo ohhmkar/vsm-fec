@@ -101,7 +101,7 @@ export default function LoginPage() {
           className="relative z-10 text-center px-12"
         >
           <h1 className="text-5xl font-bold tracking-tight mb-4 font-[var(--font-display)]">
-            Omkar's <span className="text-[var(--accent-green)]">VSM</span>
+            Omkar&apos;s <span className="text-[var(--accent-green)]">VSM</span>
           </h1>
           <p className="text-xl text-[var(--text-secondary)] max-w-md mx-auto">
             Experience the thrill of trading on a premium virtual stock market platform

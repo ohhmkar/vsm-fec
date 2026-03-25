@@ -29,13 +29,6 @@ export async function initializePlayer(userId: string) {
             stocks: stockPortfolioData,
           },
         },
-        powerups: {
-          create: {
-            insiderTradingStatus: 'Unused',
-            muftKaPaisaStatus: 'Unused',
-            stockBettingStatus: 'Unused',
-          },
-        },
       },
       select: { id: true },
     });

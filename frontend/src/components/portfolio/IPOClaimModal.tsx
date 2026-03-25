@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Award, X, Check, Loader2, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
@@ -24,12 +24,13 @@ export function IPOClaimModal() {
   const [claiming, setClaiming] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  const fetchPendingIPO = async () => {
+  const fetchPendingIPO = useCallback(async () => {
     if (!user?.id) return;
     try {
       const res = await fetch(`${BACKEND_URL}/game/ipo/pending`, {
         headers: { Authorization: `Bearer ${user.id}` },
       });
+      if (!res.ok) return;
       const data = await res.json();
       if (data.status === 'Success' && Array.isArray(data.data)) {
         setPendingIPO(data.data);
@@ -39,11 +40,11 @@ export function IPOClaimModal() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchPendingIPO();
-  }, [user]);
+  }, [fetchPendingIPO]);
 
   const handleClaim = async (symbol: string) => {
     if (!user?.id) return;
@@ -65,7 +66,7 @@ export function IPOClaimModal() {
       } else {
         setError(data.message || 'Failed to claim IPO shares');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Network error claiming IPO shares');
     } finally {
       setClaiming(null);

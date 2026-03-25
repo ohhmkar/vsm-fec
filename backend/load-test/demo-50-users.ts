@@ -15,7 +15,7 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:8080';
 const NUM_USERS = 50; 
 const CYCLES = 10; // Number of buy/sell cycles per user
 
-const STOCKS = ['NVXA', 'GRNX', 'MDRX', 'FNTX', 'AERO', 'LUXE', 'OMKX', 'AGRI', 'STRM', 'CYBX', 'RLTY', 'MOTO', 'BRIX', 'GLBL', 'QUNT'];
+const STOCKS = ['PETR', 'AGRI', 'CRED', 'BLUE', 'GRID', 'INFR', 'AURU', 'TRSP', 'SCRT', 'MEDC', 'VOLT', 'TITA', 'URBC', 'FIBR', 'NEXT', 'FINV', 'GRNF', 'HELX'];
 
 interface TradeResult {
   success: boolean;

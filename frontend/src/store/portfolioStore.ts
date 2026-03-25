@@ -43,11 +43,12 @@ export const usePortfolioStore = create<PortfolioStore>()(
           if (!token) return;
 
           const res = await fetch(`${BACKEND_URL}/game/info/portfolio`, { headers: { Authorization: `Bearer ${token}` } });
+          if (!res.ok) return;
           const data = await res.json();
 
           if (data.status === 'Success') {
             const cash = data.data.bankBalance;
-            const backendHoldings: any[] = data.data.portfolio;
+            const backendHoldings: { name: string; volume: number; value: number; avgCost?: number }[] = data.data.portfolio;
             
             // Map backend simple portfolio ({ name, volume, value, avgCost }) to our rich structure
             const currentHoldings = get().holdings;

@@ -17,7 +17,6 @@ import {
   ChevronDown,
   DollarSign,
   Crown,
-  Rocket,
   Command,
   Newspaper,
 } from "lucide-react";
@@ -32,7 +31,6 @@ const NAV_ITEMS = [
   { href: "/stocks", label: "Stocks", icon: LineChart },
   { href: "/portfolio", label: "Portfolio", icon: WalletCards },
   { href: "/leaderboard", label: "Ranks", icon: Crown },
-  { href: "/powerups", label: "Power-Ups", icon: Rocket },
   { href: "/news", label: "News", icon: Newspaper },
 ];
 

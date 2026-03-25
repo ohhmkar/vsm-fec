@@ -14,6 +14,7 @@ model User {
   u1Name   String  @map("u1Name")
   u2Name   String? @map("u2Name")
   isAdmin  Boolean @default(false) @map("is_admin")
+  isTestUser Boolean @default(false) @map("is_test_user")
 
   account      PlayerAccount?
   transactions Transaction[]
@@ -54,6 +55,7 @@ model Stock {
   roundIntroduced Int     @map("round_introduced") @db.SmallInt
   price           Float
   volatility      Float
+  currentRoundOpenPrice Float @default(0) @map("current_round_open_price")
 
   dividendAmount    Float   @default(0) @map("dividend_amount")
   ipoPrice          Float?  @map("ipo_price")
@@ -106,6 +108,7 @@ model News {
 enum NewsType {
   GENERATED
   ADMIN
+  REAL
 }
 
 model GameState {

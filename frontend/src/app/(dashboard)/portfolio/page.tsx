@@ -64,6 +64,7 @@ export default function PortfolioPage() {
         });
         const data = await res.json();
         if (data.status === 'Success' && data.data) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const currentUser = data.data.find((p: any) => p.id === user.id);
           if (currentUser?.ipoLockedSymbols) {
             const locked = new Set(currentUser.ipoLockedSymbols as string[]);

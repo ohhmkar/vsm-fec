@@ -13,48 +13,54 @@ interface StockSeed {
 }
 
 const STOCK_SEEDS: StockSeed[] = [
-  { ticker: 'NVXA', name: 'NovaTech AI Systems', sector: 'Technology', basePrice: 100.0, volatility: 0.028 },
-  { ticker: 'GRNX', name: 'GreenWave Energy Corp', sector: 'Energy', basePrice: 100.0, volatility: 0.022 },
-  { ticker: 'MDRX', name: 'MedCore Pharmaceuticals', sector: 'Healthcare', basePrice: 100.0, volatility: 0.024 },
-  { ticker: 'FNTX', name: 'Fintera Banking Group', sector: 'Finance', basePrice: 100.0, volatility: 0.018 },
-  { ticker: 'AERO', name: 'Apex Aerospace Inc', sector: 'Industrials', basePrice: 100.0, volatility: 0.02 },
-  { ticker: 'LUXE', name: 'Luminary Retail Holdings', sector: 'Consumer Discretionary', basePrice: 100.0, volatility: 0.025 },
-  { ticker: 'OMKX', name: 'Omkar Crypto Exchange', sector: 'Finance', basePrice: 100.0, volatility: 0.035 },
-  { ticker: 'AGRI', name: 'AgriVault Commodities', sector: 'Materials', basePrice: 100.0, volatility: 0.019 },
-  { ticker: 'STRM', name: 'StreamVault Media', sector: 'Communication', basePrice: 100.0, volatility: 0.023 },
-  { ticker: 'CYBX', name: 'CyberShield Security', sector: 'Technology', basePrice: 100.0, volatility: 0.026 },
-  { ticker: 'RLTY', name: 'RealNest Property Trust', sector: 'Real Estate', basePrice: 100.0, volatility: 0.015 },
-  { ticker: 'MOTO', name: 'MotorFlex Automotive', sector: 'Consumer Discretionary', basePrice: 100.0, volatility: 0.021 },
-  { ticker: 'BRIX', name: 'BioRix Life Sciences', sector: 'Healthcare', basePrice: 100.0, volatility: 0.03 },
-  { ticker: 'GLBL', name: 'GlobalRoute Logistics', sector: 'Industrials', basePrice: 100.0, volatility: 0.017 },
-  { ticker: 'QUNT', name: 'Quantum Data Infrastructure', sector: 'Technology', basePrice: 100.0, volatility: 0.032 },
-  { ticker: 'OILI', name: 'OilCo Petrochemicals', sector: 'Energy', basePrice: 200.0, volatility: 0.025, ipoRound: 5, ipoPrice: 200.0, availableInIPO: true },
-  { ticker: 'TECH', name: 'TechVentures Capital', sector: 'Technology', basePrice: 350.0, volatility: 0.035, ipoRound: 5, ipoPrice: 350.0, availableInIPO: true },
+  { ticker: 'PETR', name: 'Petronyx Materials', sector: 'Specialty Chemicals', basePrice: 42, volatility: 0.025 },
+  { ticker: 'AGRI', name: 'AgriNova Consumer', sector: 'FMCG', basePrice: 18, volatility: 0.02 },
+  { ticker: 'CRED', name: 'Credixa Finance', sector: 'NBFC', basePrice: 27, volatility: 0.028 },
+  { ticker: 'BLUE', name: 'BlueOrbit Tech', sector: 'IT Services', basePrice: 55, volatility: 0.03 },
+  { ticker: 'GRID', name: 'GridFlow Exchange', sector: 'Power Exchange', basePrice: 33, volatility: 0.022 },
+  { ticker: 'INFR', name: 'InfraForge Engineering', sector: 'Capital Goods', basePrice: 61, volatility: 0.018 },
+  { ticker: 'AURU', name: 'Aurum Luxe Retail', sector: 'Jewellery Retail', basePrice: 74, volatility: 0.024 },
+  { ticker: 'TRSP', name: 'TradeSphere Ltd.', sector: 'Stock Exchange', basePrice: 120, volatility: 0.015 },
+  { ticker: 'SCRT', name: 'SecureLife Insurance', sector: 'Insurance', basePrice: 39, volatility: 0.02 },
+  { ticker: 'MEDC', name: 'MediCore Hospitals', sector: 'Hospital Chain', basePrice: 88, volatility: 0.022 },
+  { ticker: 'VOLT', name: 'VoltEdge Renewables', sector: 'Renewable Energy', basePrice: 25, volatility: 0.028 },
+  { ticker: 'TITA', name: 'TitanAlloy Metals', sector: 'Metals', basePrice: 47, volatility: 0.026 },
+  { ticker: 'URBC', name: 'UrbanCart Quick', sector: 'Quick Commerce', basePrice: 15, volatility: 0.035 },
+  { ticker: 'FIBR', name: 'FiberLink Logistics', sector: 'Logistics', basePrice: 52, volatility: 0.023 },
+  { ticker: 'NEXT', name: 'NextGen Semicon', sector: 'Semiconductors', basePrice: 95, volatility: 0.032 },
+  { ticker: 'FINV', name: 'Finverse Brokers', sector: 'Retail Brokerage', basePrice: 21, volatility: 0.03 },
+  { ticker: 'GRNF', name: 'GreenFuel Fertchem', sector: 'Fertilizers', basePrice: 29, volatility: 0.027 },
+  { ticker: 'HELX', name: 'HelixBio Pharma', sector: 'Pharma Exports', basePrice: 63, volatility: 0.025 },
+  // Adding IPO stock examples
+  { ticker: 'ZETA', name: 'Zeta FutureCorp', sector: 'Semiconductors', basePrice: 150, volatility: 0.04, availableInIPO: true, ipoRound: 5, ipoPrice: 140 },
+  { ticker: 'OMEG', name: 'Omega Dynamics', sector: 'Defense', basePrice: 200, volatility: 0.035, availableInIPO: true, ipoRound: 8, ipoPrice: 190 },
 ];
 
 async function seed() {
   console.log('Seeding database...');
   try {
     for (const stock of STOCK_SEEDS) {
+      const data = {
+        name: stock.name,
+        sector: stock.sector,
+        roundIntroduced: stock.ipoRound ?? 1,
+        price: stock.basePrice,
+        volatility: stock.volatility,
+        ipoRound: stock.ipoRound,
+        ipoPrice: stock.ipoPrice,
+        availableInIPO: stock.availableInIPO ?? false,
+      };
+
       await prisma.stock.upsert({
         where: { symbol: stock.ticker },
         update: {
-          name: stock.name,
-          sector: stock.sector,
-          ipoRound: stock.ipoRound,
-          ipoPrice: stock.ipoPrice,
-          availableInIPO: stock.availableInIPO ?? false,
+          ...data,
+          price: undefined, // Don't reset price on re-seed if stock exists
+          roundIntroduced: stock.ipoRound ?? 1,
         },
         create: {
           symbol: stock.ticker,
-          name: stock.name,
-          sector: stock.sector,
-          roundIntroduced: stock.ipoRound ?? 1,
-          price: stock.basePrice,
-          volatility: stock.volatility,
-          ipoRound: stock.ipoRound,
-          ipoPrice: stock.ipoPrice,
-          availableInIPO: stock.availableInIPO ?? false,
+          ...data
         },
       });
     }

@@ -210,6 +210,7 @@ export function MarketIndexChart({
       <div className="flex-1 min-h-0 w-full relative">
         <Chart
           type={chartType === "line" ? "line" : "candlestick"}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           data={chartData as any}
           options={options}
         />

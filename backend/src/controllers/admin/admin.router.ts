@@ -21,6 +21,7 @@ import {
   getRoundSummaryHandler,
   pauseGameHandler,
   resumeGameHandler,
+  getAdminLeaderboardHandler,
   getIPOEligibilityHandler,
   allocateIPOHandler,
   getAvailableIPOStocksHandler,
@@ -35,6 +36,8 @@ import {
   resetGameHandler,
   getAdminPlayersHandler,
   sendNotificationHandler,
+  triggerMarketNewsHandler,
+  runScenarioHandler,
 } from './admin.controller';
 
 export const adminRouter = Router();
@@ -65,6 +68,7 @@ adminRouter.get('/rounds/config', getRoundConfigsHandler);
 adminRouter.post('/rounds/extend', extendRoundHandler);
 adminRouter.post('/rounds/end-now', endRoundHandler);
 adminRouter.post('/rounds/summary', getRoundSummaryHandler);
+adminRouter.get('/leaderboard', getAdminLeaderboardHandler);
 adminRouter.post('/game/pause', pauseGameHandler);
 adminRouter.post('/game/resume', resumeGameHandler);
 
@@ -83,6 +87,8 @@ adminRouter.post('/users/balance', updateUserBalanceHandler);
 
 // News Endpoints
 adminRouter.post('/news/generate', generateNewsHandler);
+adminRouter.post('/news/market-event', triggerMarketNewsHandler);
+adminRouter.post('/scenario', runScenarioHandler);
 
 adminRouter.post('/flush-database', flushDatabaseHandler);
 adminRouter.post('/flush-player-table', flushPlayerTableHandler);

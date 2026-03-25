@@ -31,10 +31,36 @@ export const useNewsStore = create<NewsStore>((set, get) => ({
       const res = await fetch(`${BACKEND_URL}/game/info/news`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (!res.ok) return;
       const data = await res.json();
       
       if (data.status === 'Success' && Array.isArray(data.data)) {
-        set({ news: data.data });
+        // Backend now returns objects with content, sentiment, type, timestamp
+        // If it's string (old format fallback), handle it
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const items = data.data.map((item: string | Record<string, any>, index: number) => {
+             if (typeof item === 'string') {
+                 return {
+                     id: index,
+                     content: item,
+                     sentiment: 'NEUTRAL',
+                     isAdminNews: false,
+                     timestamp: Date.now()
+                 };
+             }
+             return {
+                 id: index,
+                 content: item.content,
+                 sentiment: item.sentiment || 'NEUTRAL',
+                 isAdminNews: item.type === 'ADMIN',
+                 timestamp: item.timestamp || Date.now()
+             };
+        });
+        
+        set({ 
+            newsItems: items, 
+            news: items.map((i: NewsItem) => i.content) 
+        });
       }
     } catch (error) {
       console.error('Failed to fetch news', error);

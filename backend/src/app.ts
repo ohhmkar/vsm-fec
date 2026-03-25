@@ -73,5 +73,5 @@ registerGameGateway(io);
 
 httpServer.listen(port, () => {
   console.log(`Server Listening to port: ${port}...`);
-  console.log('Game server ready. Use admin panel to start the game and rounds.');
+  console.log('Game server ready. Manual control mode active: Use admin panel to start/end rounds and trigger scenarios.');
 });

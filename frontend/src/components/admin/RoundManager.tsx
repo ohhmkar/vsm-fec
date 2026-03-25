@@ -8,7 +8,6 @@ const ADMIN_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080') +
 
 interface RoundConfigRules {
   noShortSelling: boolean;
-  noInsiderTrading: boolean;
 }
 
 export default function RoundManager() {
@@ -24,7 +23,6 @@ export default function RoundManager() {
   
   const [rules, setRules] = useState<RoundConfigRules>({
     noShortSelling: false,
-    noInsiderTrading: false,
   });
 
   const showMsg = (text: string, type: 'success' | 'error') => {
@@ -58,8 +56,9 @@ export default function RoundManager() {
       } else {
         showMsg(`Failed: ${data.message}`, 'error');
       }
-    } catch (err: any) {
-      showMsg(`Error: ${err.message}`, 'error');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      showMsg(`Error: ${msg}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -79,8 +78,9 @@ export default function RoundManager() {
       } else {
         showMsg(`Failed to ${endpoint}`, 'error');
       }
-    } catch (err: any) {
-      showMsg(`Error: ${err.message}`, 'error');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      showMsg(`Error: ${msg}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -162,20 +162,6 @@ export default function RoundManager() {
                     <div className="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-all peer-checked:translate-x-4"></div>
                   </div>
                   <span className="text-sm font-medium group-hover:text-[var(--text-primary)] transition-colors">Disable Short Selling</span>
-              </label>
-
-              <label className="flex items-center space-x-3 cursor-pointer group">
-                  <div className="relative">
-                    <input 
-                        type="checkbox"
-                        checked={rules.noInsiderTrading}
-                        onChange={(e) => setRules({...rules, noInsiderTrading: e.target.checked})}
-                        className="sr-only peer"
-                    />
-                    <div className="w-10 h-6 bg-gray-700 rounded-full peer peer-checked:bg-[var(--accent-red)] peer-focus:ring-2 peer-focus:ring-[var(--accent-red)] transition-all"></div>
-                    <div className="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-all peer-checked:translate-x-4"></div>
-                  </div>
-                  <span className="text-sm font-medium group-hover:text-[var(--text-primary)] transition-colors">Disable Insider Trading</span>
               </label>
           </div>
       </div>
