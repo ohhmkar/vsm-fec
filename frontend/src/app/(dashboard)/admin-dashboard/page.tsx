@@ -171,10 +171,18 @@ export default function AdminDashboardPage() {
   const fetchPlayers = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const res = await fetch(`${BACKEND_URL}/admin/leaderboard?includeTestUsers=${showTestUsers}`, {
-        headers: { Authorization: `Bearer ${user.id}` },
-      });
+      const res = await fetch(
+        `${BACKEND_URL}/admin/leaderboard?includeTestUsers=${showTestUsers}`,
+        {
+          headers: { Authorization: `Bearer ${user.id}` },
+        },
+      );
       if (!res.ok) {
+        if (res.status === 401) {
+          useAuthStore.getState().logout();
+          router.push("/login/admin");
+          return;
+        }
         console.error("Failed to load players");
         setLoading(false);
         return;
@@ -196,14 +204,20 @@ export default function AdminDashboardPage() {
     fetchPlayers();
   }, [fetchPlayers]);
 
-
   const fetchRoundConfigs = useCallback(async () => {
     if (!user?.id) return;
     try {
       const res = await fetch(`${BACKEND_URL}/admin/rounds/config`, {
         headers: { Authorization: `Bearer ${user.id}` },
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        if (res.status === 401) {
+          useAuthStore.getState().logout();
+          router.push("/login/admin");
+          return;
+        }
+        return;
+      }
       const data = await res.json();
       if (data.status === "Success") {
         setRoundConfigs(data.data);
@@ -220,6 +234,11 @@ export default function AdminDashboardPage() {
         headers: { Authorization: `Bearer ${user.id}` },
       });
       if (!res.ok) {
+        if (res.status === 401) {
+          useAuthStore.getState().logout();
+          router.push("/login/admin");
+          return;
+        }
         console.error(
           "Failed to fetch game state:",
           res.status,
@@ -238,23 +257,31 @@ export default function AdminDashboardPage() {
     }
   }, [user?.id]);
 
-  const fetchIPOEligibility = useCallback(async (excludeSector?: string) => {
-    if (!user?.id) return;
-    try {
-      const url = excludeSector
-        ? `${BACKEND_URL}/admin/ipo/eligibility?excludeSector=${excludeSector}`
-        : `${BACKEND_URL}/admin/ipo/eligibility`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${user.id}` },
-      });
-      const data = await res.json();
-      if (res.ok && data.status === "Success") {
-        setEligibleUsers(data.data);
+  const fetchIPOEligibility = useCallback(
+    async (excludeSector?: string) => {
+      if (!user?.id) return;
+      try {
+        const url = excludeSector
+          ? `${BACKEND_URL}/admin/ipo/eligibility?excludeSector=${excludeSector}`
+          : `${BACKEND_URL}/admin/ipo/eligibility`;
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${user.id}` },
+        });
+        if (res.status === 401) {
+          useAuthStore.getState().logout();
+          router.push("/login/admin");
+          return;
+        }
+        const data = await res.json();
+        if (res.ok && data.status === "Success") {
+          setEligibleUsers(data.data);
+        }
+      } catch (err) {
+        console.error(err);
       }
-    } catch (err) {
-      console.error(err);
-    }
-  }, [user?.id]);
+    },
+    [user?.id],
+  );
 
   const fetchIPOStocks = useCallback(async () => {
     if (!user?.id) return;
@@ -262,6 +289,11 @@ export default function AdminDashboardPage() {
       const res = await fetch(`${BACKEND_URL}/admin/ipo/stocks`, {
         headers: { Authorization: `Bearer ${user.id}` },
       });
+      if (res.status === 401) {
+        useAuthStore.getState().logout();
+        router.push("/login/admin");
+        return;
+      }
       const data = await res.json();
       if (res.ok && data.status === "Success") {
         setIpoStocks(data.data);
@@ -274,23 +306,31 @@ export default function AdminDashboardPage() {
     }
   }, [user?.id, selectedIPOStock]);
 
-  const fetchAllocatedIPOs = useCallback(async (round?: number) => {
-    if (!user?.id) return;
-    try {
-      const url = round
-        ? `${BACKEND_URL}/admin/ipo/allocations?round=${round}`
-        : `${BACKEND_URL}/admin/ipo/allocations`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${user.id}` },
-      });
-      const data = await res.json();
-      if (res.ok && data.status === "Success") {
-        setAllocatedIPOs(data.data);
+  const fetchAllocatedIPOs = useCallback(
+    async (round?: number) => {
+      if (!user?.id) return;
+      try {
+        const url = round
+          ? `${BACKEND_URL}/admin/ipo/allocations?round=${round}`
+          : `${BACKEND_URL}/admin/ipo/allocations`;
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${user.id}` },
+        });
+        if (res.status === 401) {
+          useAuthStore.getState().logout();
+          router.push("/login/admin");
+          return;
+        }
+        const data = await res.json();
+        if (res.ok && data.status === "Success") {
+          setAllocatedIPOs(data.data);
+        }
+      } catch (err) {
+        console.error(err);
       }
-    } catch (err) {
-      console.error(err);
-    }
-  }, [user?.id]);
+    },
+    [user?.id],
+  );
 
   useEffect(() => {
     fetchPlayers();
@@ -1096,7 +1136,9 @@ export default function AdminDashboardPage() {
                   Player Management
                 </h2>
                 <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer select-none">
-                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${showTestUsers ? 'bg-[var(--accent-blue)] border-[var(--accent-blue)] text-white' : 'border-[var(--border-color)] bg-[var(--bg-base)]'}`}>
+                  <div
+                    className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${showTestUsers ? "bg-[var(--accent-blue)] border-[var(--accent-blue)] text-white" : "border-[var(--border-color)] bg-[var(--bg-base)]"}`}
+                  >
                     {showTestUsers && <CheckSquare size={10} />}
                   </div>
                   <input
@@ -1155,15 +1197,21 @@ export default function AdminDashboardPage() {
                           <td className="py-3 px-4">
                             <div className="flex flex-wrap gap-1 max-w-[200px]">
                               {p.stocks && p.stocks.length > 0 ? (
-                                p.stocks.map((s) => (
-                                  s.volume > 0 && (
-                                    <span key={s.symbol} className="text-[10px] px-1.5 py-0.5 bg-[var(--bg-elevated)] rounded border border-[var(--border-color)] text-[var(--text-dim)] font-mono whitespace-nowrap">
-                                      {s.symbol}:{s.volume}
-                                    </span>
-                                  )
-                                ))
+                                p.stocks.map(
+                                  (s) =>
+                                    s.volume > 0 && (
+                                      <span
+                                        key={s.symbol}
+                                        className="text-[10px] px-1.5 py-0.5 bg-[var(--bg-elevated)] rounded border border-[var(--border-color)] text-[var(--text-dim)] font-mono whitespace-nowrap"
+                                      >
+                                        {s.symbol}:{s.volume}
+                                      </span>
+                                    ),
+                                )
                               ) : (
-                                <span className="text-xs text-[var(--text-dim)]">-</span>
+                                <span className="text-xs text-[var(--text-dim)]">
+                                  -
+                                </span>
                               )}
                             </div>
                           </td>
@@ -1175,7 +1223,7 @@ export default function AdminDashboardPage() {
                           </td>
                           <td className="py-3 px-4 text-right font-mono font-bold text-[var(--accent-green)]">
                             {formatCurrency(
-                              p.wealth || (p.bankBalance + p.totalPortfolioValue),
+                              p.wealth || p.bankBalance + p.totalPortfolioValue,
                             )}
                           </td>
                           <td className="py-3 px-4 text-center">

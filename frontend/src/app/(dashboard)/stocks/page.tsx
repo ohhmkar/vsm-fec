@@ -21,10 +21,7 @@ import {
   listVariants,
   itemVariants,
 } from "@/components/ui/PageWrapper";
-import {
-  formatCurrency,
-  formatCompactCurrency,
-} from "@/lib/utils";
+import { formatCurrency, formatCompactCurrency } from "@/lib/utils";
 import { clsx } from "clsx";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { MiniSparkline } from "@/components/charts/MiniSparkline";
@@ -395,9 +392,7 @@ export default function StocksPage() {
                     <span className="text-2xl font-bold font-mono">
                       {formatCurrency(stock.price)}
                     </span>
-                    <ChangeIndicator
-                      value={stock.changePercent / 100}
-                    />
+                    <ChangeIndicator value={stock.changePercent / 100} />
                   </div>
 
                   <div className="h-12 w-full mb-4 opacity-100">

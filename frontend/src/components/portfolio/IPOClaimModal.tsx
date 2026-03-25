@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Award, X, Check, Loader2, AlertCircle } from 'lucide-react';
-import { useAuthStore } from '@/store/authStore';
-import { usePortfolioStore } from '@/store/portfolioStore';
-import { formatCurrency } from '@/lib/utils';
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Award, X, Check, Loader2, AlertCircle } from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
+import { usePortfolioStore } from "@/store/portfolioStore";
+import { formatCurrency } from "@/lib/utils";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 interface PendingIPO {
   symbol: string;
@@ -22,7 +22,7 @@ export function IPOClaimModal() {
   const [pendingIPO, setPendingIPO] = useState<PendingIPO[]>([]);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState<string | null>(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const fetchPendingIPO = useCallback(async () => {
     if (!user?.id) return;
@@ -32,11 +32,11 @@ export function IPOClaimModal() {
       });
       if (!res.ok) return;
       const data = await res.json();
-      if (data.status === 'Success' && Array.isArray(data.data)) {
+      if (data.status === "Success" && Array.isArray(data.data)) {
         setPendingIPO(data.data);
       }
     } catch (err) {
-      console.error('Failed to fetch pending IPO', err);
+      console.error("Failed to fetch pending IPO", err);
     } finally {
       setLoading(false);
     }
@@ -49,25 +49,25 @@ export function IPOClaimModal() {
   const handleClaim = async (symbol: string) => {
     if (!user?.id) return;
     setClaiming(symbol);
-    setError('');
+    setError("");
     try {
       const res = await fetch(`${BACKEND_URL}/game/ipo/claim`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${user.id}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ symbol }),
       });
       const data = await res.json();
-      if (data.status === 'Success') {
+      if (data.status === "Success") {
         await syncWithBackend();
-        setPendingIPO(prev => prev.filter(p => p.symbol !== symbol));
+        setPendingIPO((prev) => prev.filter((p) => p.symbol !== symbol));
       } else {
-        setError(data.message || 'Failed to claim IPO shares');
+        setError(data.message || "Failed to claim IPO shares");
       }
     } catch (_err) {
-      setError('Network error claiming IPO shares');
+      setError("Network error claiming IPO shares");
     } finally {
       setClaiming(null);
     }
@@ -104,7 +104,7 @@ export function IPOClaimModal() {
           </div>
 
           <div className="p-6 space-y-4">
-            {pendingIPO.map(ipo => (
+            {pendingIPO.map((ipo) => (
               <div
                 key={ipo.symbol}
                 className="p-4 bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-color)]"
@@ -134,7 +134,8 @@ export function IPOClaimModal() {
                 )}
 
                 <div className="text-xs text-[var(--text-dim)] mb-3 p-2 bg-[var(--bg-base)] rounded-lg">
-                  These shares will be locked until Round {ipo.round + 1}. You cannot sell them until then.
+                  These shares will be locked until Round {ipo.round + 1}. You
+                  cannot sell them until then.
                 </div>
 
                 <button

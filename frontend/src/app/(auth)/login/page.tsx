@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Shield } from 'lucide-react';
-import { LoginForm } from '@/components/auth/LoginForm';
-import { generateAllStocks } from '@/lib/stockEngine';
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { Shield } from "lucide-react";
+import { LoginForm } from "@/components/auth/LoginForm";
+import { generateAllStocks } from "@/lib/stockEngine";
 
 const tickerStocks = generateAllStocks();
 
@@ -38,11 +38,11 @@ function TickerTape() {
             <span
               className={
                 stock.changePercent >= 0
-                  ? 'text-[var(--accent-green)]'
-                  : 'text-[var(--accent-red)]'
+                  ? "text-[var(--accent-green)]"
+                  : "text-[var(--accent-red)]"
               }
             >
-              {stock.changePercent >= 0 ? '+' : ''}
+              {stock.changePercent >= 0 ? "+" : ""}
               {stock.changePercent.toFixed(2)}%
             </span>
           </div>
@@ -64,7 +64,7 @@ function FloatingChart() {
         fill="url(#chartGradient)"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 1 }}
-        transition={{ duration: 3, ease: 'easeOut' }}
+        transition={{ duration: 3, ease: "easeOut" }}
       />
       <motion.path
         d="M0,400 C50,380 100,350 150,370 C200,390 250,320 300,280 C350,240 400,260 450,220 C500,180 550,200 600,160 C650,120 700,140 750,100 L800,80"
@@ -73,7 +73,7 @@ function FloatingChart() {
         strokeWidth="2"
         initial={{ pathLength: 0 }}
         animate={{ pathLength: 1 }}
-        transition={{ duration: 2.5, ease: 'easeOut' }}
+        transition={{ duration: 2.5, ease: "easeOut" }}
       />
       <defs>
         <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
@@ -101,34 +101,22 @@ export default function LoginPage() {
           className="relative z-10 text-center px-12"
         >
           <h1 className="text-5xl font-bold tracking-tight mb-4 font-[var(--font-display)]">
-            Omkar&apos;s <span className="text-[var(--accent-green)]">VSM</span>
+            Paise Udao <span className="text-[var(--accent-green)]">VSM</span>
           </h1>
           <p className="text-xl text-[var(--text-secondary)] max-w-md mx-auto">
-            Experience the thrill of trading on a premium virtual stock market platform
+            Experience the thrill of trading on a premium virtual stock market
+            platform
           </p>
-          <div className="mt-8 flex items-center justify-center gap-8 text-sm text-[var(--text-dim)]">
-            <div>
-              <div className="text-2xl font-bold text-[var(--text-primary)] tabular-nums">15</div>
-              <div>Live Stocks</div>
-            </div>
-            <div className="w-px h-10 bg-[var(--border-color)]" />
-            <div>
-              <div className="text-2xl font-bold text-[var(--text-primary)] tabular-nums">$100K</div>
-              <div>Virtual Cash</div>
-            </div>
-            <div className="w-px h-10 bg-[var(--border-color)]" />
-            <div>
-              <div className="text-2xl font-bold text-[var(--accent-green)] tabular-nums">Live</div>
-              <div>Market Sim</div>
-            </div>
-          </div>
         </motion.div>
 
         {/* Bottom ticker */}
         <div className="absolute bottom-8 left-0 right-0 overflow-hidden opacity-40">
           <div className="flex gap-8 whitespace-nowrap animate-[scroll_20s_linear_infinite]">
             {tickerStocks.map((s) => (
-              <span key={s.ticker} className="text-xs font-mono text-[var(--text-dim)]">
+              <span
+                key={s.ticker}
+                className="text-xs font-mono text-[var(--text-dim)]"
+              >
                 {s.ticker}
               </span>
             ))}
