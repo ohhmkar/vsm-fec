@@ -1,46 +1,91 @@
 # FEC Virtual Stock Market (FEC-VSM)
 
-A virtual stock market simulation platform for college events and finance competitions. It includes real-time simulated market data, trading capabilities, and player tracking.
+A production-grade virtual stock market simulation platform designed for college finance competitions and trading events. Built as a full-stack application with real-time market simulation, sophisticated trading mechanics, and comprehensive player analytics.
 
-## Key Features
+## Overview
 
-- **Market Engine**: Simulates stock price movements using Ornstein-Uhlenbeck processes and jump diffusion models.
-- **Trading Interface**: Buy and sell stocks with synchronized portfolio updates.
-- **Portfolio Tracking**: Calculates Net Worth, P&L, and Weighted Average Cost Basis (WACB).
-- **Charts**: Candlestick charts with multiple timeframes (`1m`, `10m`, `30m`, `1h`, `ALL`).
-- **Power-Ups**: Includes features like "Insider Trading" (news peeks) and "Muft Ka Paisa" (cash grants).
-- **Security**: Includes rate limiting, input validation, and JWT authentication.
-- **Admin Dashboard**: Controls game states (Open/Close trading) and monitors market health.
+FEC-VSM provides an immersive trading environment where participants compete in a simulated stock market with realistic price movements, order matching, and portfolio management. The platform handles concurrent users with real-time synchronization, advanced security features, and an intuitive interface for both traders and administrators.
 
-## Tech Stack
+## 🎯 Key Features
+
+- **Advanced Market Engine**: Simulates realistic stock price movements using Ornstein-Uhlenbeck stochastic processes and jump diffusion models
+- **Real-time Trading Interface**: Buy/sell orders with instant execution, synchronized across all clients via WebSocket
+- **Portfolio Analytics**: Calculates Net Worth, Profit/Loss, Weighted Average Cost Basis (WACB), and performance metrics
+- **Multi-timeframe Charts**: Interactive candlestick charts (1m, 10m, 30m, 1h, ALL) with technical indicators
+- **Game Features**: Power-ups like "Insider Trading" (market news peeks) and "Muft Ka Paisa" (cash grants)
+- **Enterprise Security**: JWT authentication, rate limiting, input validation, helmet.js, CORS protection
+- **Admin Control Panel**: Real-time game state management (start/pause/end trading), player monitoring, and market health dashboards
+- **Load Testing Suite**: Built-in load test scripts for performance validation (up to 50+ concurrent users)
+
+## 🛠️ Tech Stack
 
 ### Frontend
-
-- **Framework**: Next.js 16 (App Router) with Turbopack
-- **Styling**: Tailwind CSS, Framer Motion
-- **State Management**: Zustand (Persisted Store)
-- **Charts**: Recharts, Chart.js
-- **Network**: Socket.io-client
+- **Framework**: Next.js 16 with App Router and Turbopack for optimized development experience
+- **State Management**: Zustand (lightweight, persisted global store)
+- **Styling**: Tailwind CSS v4 with responsive design
+- **Animations**: Framer Motion for smooth UI transitions
+- **Charts**: Recharts and Chart.js with financial plugins (candlestick charts)
+- **Real-time**: Socket.io-client for WebSocket communication
+- **Authentication**: NextAuth.js for session management
+- **3D Graphics**: Three.js and React Three Fiber (optional UI enhancements)
 
 ### Backend
-
-- **Runtime**: Node.js
-- **Framework**: Express.js
-- **Database**: PostgreSQL
-- **ORM**: Prisma ORM
-- **Real-time**: Socket.io
-- **Security**: Helmet, Rate-Limit, BCrypt
+- **Runtime**: Node.js with TypeScript
+- **Framework**: Express.js with async error handling
+- **Database**: PostgreSQL 12+ with connection pooling
+- **ORM**: Prisma Client for type-safe database queries
+- **Real-time**: Socket.io server for broadcasting market/game updates
+- **Authentication**: JWT (jsonwebtoken) with bcryptjs password hashing
+- **Security**: Helmet.js, CORS, Express Rate Limit, Input validation with Zod
+- **Logging**: Winston logger for structured logs
+- **Caching**: Node-cache for session and market data caching
+- **Testing**: Built-in load test suite with TypeScript (tsx)
 
 ---
 
-## Local Setup Guide
+## 🏗️ Architecture
+
+FEC-VSM follows a client-server architecture with real-time communication:
+
+```
+┌─────────────────┐                 ┌──────────────────────────────┐
+│  Frontend       │                 │  Backend                     │
+│  (Next.js)      │                 │  (Express.js + Socket.io)    │
+├─────────────────┤                 ├──────────────────────────────┤
+│ - Auth Pages    │◄────REST API───►│ - Auth Controllers           │
+│ - Dashboard     │                 │ - Game Logic Engine          │
+│ - Charts        │◄──WebSocket────►│ - Order Matching/Execution   │
+│ - Portfolio Mgmt│                 │ - Real-time Broadcast        │
+│ - Admin Panel   │                 │ - Admin Controllers          │
+└─────────────────┘                 └──────────┬───────────────────┘
+         ▲                                      │
+         │                          ┌───────────▼──────────┐
+         │                          │   PostgreSQL DB      │
+         └──────────────────────────┤ - Users/Accounts     │
+         (Session/Auth Token)       │ - Stocks/Prices      │
+                                    │ - Trades/Orders      │
+                                    │ - Portfolios         │
+                                    └──────────────────────┘
+```
+
+**Key Components:**
+- **Authentication**: JWT tokens issued on login, validated on protected routes
+- **Order Execution**: Transactional database writes prevent double-spends and race conditions
+- **Price Simulation**: Market engine recalculates prices based on order flow and Ornstein-Uhlenbeck processes
+- **Real-time Updates**: Socket.io broadcasts price ticks, leaderboard updates, and game state changes
+- **Caching Layer**: In-memory cache for leaderboard and market data to reduce database load
+
+---
+
+## 📂 Local Setup Guide
 
 Follow these steps to get the project running on your local machine.
 
 ### Prerequisites
 
-- **Node.js** 18+ and **pnpm** (or npm)
-- **PostgreSQL** 12+ (local instance or running via Docker)
+- **Node.js** 18+ (check with `node --version`)
+- **pnpm** 8+ (install with `npm install -g pnpm`) or npm
+- **PostgreSQL** 12+ (running locally or via Docker)
 - **Git**
 
 ### 1. Database Setup
@@ -450,6 +495,35 @@ pnpm seed
 - **500 Error on API calls**: Check Vercel function logs for Prisma connection errors
 - **WebSocket issues**: Ensure `ALLOWED_ORIGIN` includes your frontend URL
 - **Database connection**: Ensure `?sslmode=require` is appended to Neon URL
+
+---
+
+## ⚡ Quick Start (5 minutes)
+
+For the impatient developer:
+
+```bash
+# 1. Clone and setup
+git clone <repo-url>
+cd FEC-VSM
+
+# 2. Backend
+cd backend && pnpm install
+cp .env.example .env  # Edit with your DB URL
+pnpm db:push && pnpm seed
+pnpm start:dev &  # Runs at localhost:8080
+
+# 3. Frontend (new terminal)
+cd frontend && pnpm install
+cp .env.example .env.local
+pnpm dev  # Runs at localhost:3000
+
+# 4. Login at http://localhost:3000
+# Use: admin@example.com / adminpassword
+# Or: manan@example.com / manan123
+```
+
+**Still need help?** See Full Setup Guide above.
 
 ---
 
